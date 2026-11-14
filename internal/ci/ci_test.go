@@ -59,3 +59,18 @@ func TestIDTokenEnvWinsAndMissingIsAnError(t *testing.T) {
 		t.Fatal("no token source must be an error")
 	}
 }
+
+func TestDetectGitLab(t *testing.T) {
+	fakeEnv(t, map[string]string{
+		"GITLAB_CI": "true", "CI_PROJECT_URL": "https://gitlab.com/acme/svc", "CI_COMMIT_SHA": "abc123",
+		"CI_JOB_URL": "https://gitlab.com/acme/svc/-/jobs/7",
+	})
+	e, err := Detect(context.Background(), t.TempDir(), "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := Env{Provider: "gitlab", Repo: "https://gitlab.com/acme/svc", Revision: "abc123", RunURL: "https://gitlab.com/acme/svc/-/jobs/7"}
+	if e != want {
+		t.Fatalf("got %+v\nwant %+v", e, want)
+	}
+}

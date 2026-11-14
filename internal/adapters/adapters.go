@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 
 	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
@@ -24,8 +25,9 @@ type Runner struct {
 	WorkDir   string // mounted at /work; must be visible to the docker daemon (e.g. under $HOME on Colima)
 	Subject   string // OCI layout dir or tar, mounted read-only at /subject
 	CacheVol  string // named volume for scanner DBs
-	// ExcludeRel is a path under SourceDir (e.g. the evidence output dir) that scanners must skip.
-	ExcludeRel string
+	// Exclude lists paths under SourceDir that are not source (the evidence dir, an image tar) and
+	// that scanners must skip. Directories and files are both allowed.
+	Exclude []string
 }
 
 type Evidence struct {
@@ -105,9 +107,13 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 	// --offline-scan: a secrets scan must not resolve dependencies over the network (leaks names; rate limits)
 	secretArgs := []string{"fs", "--quiet", "--offline-scan", "--scanners", "secret", "--format", "json"}
 	sastArgs := []string{"semgrep", "scan", "--metrics=off", "--quiet", "--json", "--config", r.Tools.Semgrep.Config}
-	if r.ExcludeRel != "" {
-		secretArgs = append(secretArgs, "--skip-dirs", "/src/"+filepath.ToSlash(r.ExcludeRel))
-		sastArgs = append(sastArgs, "--exclude", filepath.ToSlash(r.ExcludeRel))
+	for _, rel := range r.Exclude {
+		flag := "--skip-files"
+		if fi, statErr := os.Stat(filepath.Join(r.SourceDir, rel)); statErr == nil && fi.IsDir() {
+			flag = "--skip-dirs"
+		}
+		secretArgs = append(secretArgs, flag, "/src/"+filepath.ToSlash(rel))
+		sastArgs = append(sastArgs, "--exclude", filepath.ToSlash(rel))
 	}
 	step("secrets", &ev.Secrets, r.Tools.Trivy.Image, nil, append(secretArgs, "/src")...)
 
@@ -116,7 +122,7 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 	// tree itself is mounted read-only and left untouched.
 	if err == nil {
 		var empty string
-		if ev.NeutralizedIgnores, err = findSemgrepIgnores(r.SourceDir, r.ExcludeRel); err == nil && len(ev.NeutralizedIgnores) > 0 {
+		if ev.NeutralizedIgnores, err = findSemgrepIgnores(r.SourceDir, r.Exclude); err == nil && len(ev.NeutralizedIgnores) > 0 {
 			empty = filepath.Join(r.WorkDir, ".otrust-empty-ignore")
 			err = os.WriteFile(empty, nil, 0o644)
 			for _, rel := range ev.NeutralizedIgnores {
@@ -129,14 +135,14 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 	return ev, err
 }
 
-func findSemgrepIgnores(root, excludeRel string) ([]string, error) {
+func findSemgrepIgnores(root string, exclude []string) ([]string, error) {
 	var found []string
 	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		rel, _ := filepath.Rel(root, p)
-		if d.IsDir() && (d.Name() == ".git" || (excludeRel != "" && rel == excludeRel)) {
+		if d.IsDir() && (d.Name() == ".git" || slices.Contains(exclude, rel)) {
 			return filepath.SkipDir
 		}
 		if !d.IsDir() && d.Name() == ".semgrepignore" {

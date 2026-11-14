@@ -87,8 +87,11 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 		return nil, err
 	}
 	r := &adapters.Runner{Tools: tools, SourceDir: src, WorkDir: out, Subject: img, CacheVol: "otrust-cache"}
-	if rel, err := filepath.Rel(src, out); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
-		r.ExcludeRel = rel
+	// the evidence dir and the image are not source, even when they sit inside the source tree
+	for _, p := range []string{out, img} {
+		if rel, err := filepath.Rel(src, p); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
+			r.Exclude = append(r.Exclude, rel)
+		}
 	}
 	ev, err := r.Run(ctx, subj.SyftSource())
 	if err != nil {

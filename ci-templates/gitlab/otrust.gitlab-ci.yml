@@ -1,0 +1,53 @@
+# Open Trust assessment for GitLab CI. Include it pinned to a commit and extend the hidden job:
+#
+#   include:
+#     - remote: https://raw.githubusercontent.com/dario-mr/open-trust/<sha>/ci-templates/gitlab/otrust.gitlab-ci.yml
+#   assess:
+#     extends: .otrust-assess
+#     needs: [build]
+#     variables:
+#       OTRUST_REF: <sha>                     # otrust revision to build; use the same commit as the include
+#       OTRUST_IMAGE: image.oci.tar           # OCI layout tar under $CI_PROJECT_DIR (e.g. a build artifact)
+#       OTRUST_SUBJECT: registry.example.com/acme/svc
+#
+# Trust level: L1+ci-identity. GitLab's OIDC token names the top-level pipeline, never an included
+# template, so the signature proves which project, ref and commit ran this, not that the vendor
+# could not change it. (On GitHub, the reusable workflow reaches L1+isolated-assessor.)
+
+.otrust-assess:
+  # golang:1.27.4-alpine; this tag is rebuilt for OS patches, the pinned digest was current on 2026-11-14
+  image: golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf
+  services:
+    - name: docker:28.5.2-dind@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: /certs/client
+    OTRUST_SOURCE: .
+    # under $CI_PROJECT_DIR: the dind daemon sees the job's /builds volume, not its /tmp
+    OTRUST_OUT: $CI_PROJECT_DIR/otrust-out
+    OTRUST_FAIL_ON_FAILED: "true"
+  id_tokens:
+    SIGSTORE_ID_TOKEN:
+      aud: sigstore
+  before_script:
+    - '[ -n "$OTRUST_REF" ] || { echo "set OTRUST_REF to the otrust commit to build"; exit 2; }'
+    - apk add --no-cache docker-cli git
+    - git clone --quiet https://github.com/dario-mr/open-trust.git /opt/open-trust
+    - git -C /opt/open-trust -c advice.detachedHead=false checkout --quiet "$OTRUST_REF"
+    - (cd /opt/open-trust && go build -trimpath -o /usr/local/bin/otrust ./cmd/otrust)
+    - for i in 1 2 3 4 5 6 7 8 9 10; do docker info >/dev/null 2>&1 && break; sleep 3; done
+  script:
+    - |
+      set +e
+      otrust assess --keyless --image "$OTRUST_IMAGE" --name "$OTRUST_SUBJECT" --source "$OTRUST_SOURCE" --out "$OTRUST_OUT"
+      code=$?
+      set -e
+      if [ "$code" = 1 ] && [ "$OTRUST_FAIL_ON_FAILED" != "true" ]; then echo "Assessment FAILED (recorded in the certificate)"; code=0; fi
+      exit $code
+  artifacts:
+    when: always
+    paths:
+      - otrust-out/

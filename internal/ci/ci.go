@@ -1,6 +1,5 @@
 // Package ci identifies the CI environment, the source revision, and the CI's OIDC identity token.
-// This is the only CI-specific code (poc-plan.md D8). Providers: GitHub Actions, generic.
-// shortcut: GitLab detection waits for a GitLab account that can run CI (week 4 ran GitHub only).
+// This is the only CI-specific code (poc-plan.md D8). Providers: GitHub Actions, GitLab CI, generic.
 package ci
 
 import (
@@ -17,7 +16,7 @@ import (
 )
 
 type Env struct {
-	Provider string `json:"provider"` // "generic" | "github"
+	Provider string `json:"provider"` // "generic" | "github" | "gitlab"
 	Repo     string `json:"repo"`
 	Revision string `json:"revision"`
 	RunURL   string `json:"runUrl,omitempty"`
@@ -30,7 +29,12 @@ var Getenv = os.Getenv
 // Detect fills the environment: flags win, then the CI's own variables, then git in sourceDir.
 func Detect(ctx context.Context, sourceDir, repo, revision string) (Env, error) {
 	e := Env{Provider: "generic"}
-	if Getenv("GITHUB_ACTIONS") == "true" {
+	switch {
+	case Getenv("GITLAB_CI") == "true":
+		// Runner stays unknown here: GitLab exposes no reliable hosted/self-hosted variable;
+		// the Fulcio certificate's runner_environment claim is what the verifier checks.
+		e = Env{Provider: "gitlab", Repo: Getenv("CI_PROJECT_URL"), Revision: Getenv("CI_COMMIT_SHA"), RunURL: Getenv("CI_JOB_URL")}
+	case Getenv("GITHUB_ACTIONS") == "true":
 		server := Getenv("GITHUB_SERVER_URL")
 		e = Env{
 			Provider: "github",
@@ -76,7 +80,7 @@ func IDToken(ctx context.Context, audience string) (string, error) {
 	}
 	reqURL, reqTok := Getenv("ACTIONS_ID_TOKEN_REQUEST_URL"), Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
 	if reqURL == "" || reqTok == "" {
-		return "", errors.New("no CI identity token: set SIGSTORE_ID_TOKEN, or run in GitHub Actions with `permissions: id-token: write`")
+		return "", errors.New("no CI identity token: set SIGSTORE_ID_TOKEN (GitLab: id_tokens with aud: sigstore), or run in GitHub Actions with `permissions: id-token: write`")
 	}
 	u, err := url.Parse(reqURL)
 	if err != nil {
