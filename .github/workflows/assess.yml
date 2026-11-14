@@ -1,0 +1,124 @@
+# Open Trust assessment as a reusable workflow. Callers pass an OCI image (as a workflow artifact);
+# this job builds otrust from *this workflow's own revision*, scans with the pinned profile tools,
+# and signs keyless with its OIDC identity. Caller steps cannot run inside this job.
+#
+# Caller:
+#   jobs:
+#     assess:
+#       needs: build
+#       permissions: { contents: read, id-token: write }
+#       uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>
+#       with: { image-artifact: my-image, subject-name: registry.example.com/acme/svc }
+name: otrust assess
+
+on:
+  workflow_call:
+    inputs:
+      image-artifact:
+        description: Name of the workflow artifact holding the OCI image layout tar
+        required: true
+        type: string
+      image-file:
+        description: File name of the OCI tar inside that artifact
+        type: string
+        default: image.oci.tar
+      subject-name:
+        description: Subject name recorded in the certificate
+        required: true
+        type: string
+      source-path:
+        description: Path of the source to scan (secrets + SAST), relative to the repository root
+        type: string
+        default: .
+      fail-on-failed-assessment:
+        description: Fail the job when the assessment result is FAILED (the certificate is produced either way)
+        type: boolean
+        default: true
+    outputs:
+      result:
+        description: PASSED or FAILED
+        value: ${{ jobs.assess.outputs.result }}
+
+permissions: {}
+
+jobs:
+  assess:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      result: ${{ steps.assess.outputs.result }}
+    steps:
+      - name: Locate this workflow's own revision
+        id: self
+        # github.workflow_ref is the caller's; only the OIDC token says which reusable workflow is running.
+        run: |
+          set -euo pipefail
+          tok=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=otrust-self-locate" | jq -r .value)
+          claims=$(cut -d. -f2 <<<"$tok" | tr '_-' '/+' | awk '{n=length($0)%4; if(n==2)$0=$0"=="; else if(n==3)$0=$0"="; print}' | base64 -d)
+          ref=$(jq -r .job_workflow_ref <<<"$claims")
+          sha=$(jq -r .job_workflow_sha <<<"$claims")
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "unexpected job_workflow_sha"; exit 1; }
+          echo "repo=${ref%%/.github/workflows/*}" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Assessor: $ref ($sha)"
+
+      - name: Check out the assessor (otrust source at this workflow's revision)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ steps.self.outputs.repo }}
+          ref: ${{ steps.self.outputs.sha }}
+          path: .otrust-agent
+          persist-credentials: false
+
+      - name: Check out the source being assessed
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: .otrust-src
+          persist-credentials: false
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .otrust-agent/go.mod
+          cache-dependency-path: .otrust-agent/go.sum
+
+      - name: Build otrust
+        working-directory: .otrust-agent
+        run: go build -trimpath -o "$RUNNER_TEMP/otrust" ./cmd/otrust
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.image-artifact }}
+          path: ${{ runner.temp }}/image
+
+      - name: Assess and sign
+        id: assess
+        env:
+          IMAGE: ${{ runner.temp }}/image/${{ inputs.image-file }}
+          SUBJECT_NAME: ${{ inputs.subject-name }}
+          SOURCE: .otrust-src/${{ inputs.source-path }}
+        run: |
+          set +e
+          "$RUNNER_TEMP/otrust" assess --keyless --image "$IMAGE" --name "$SUBJECT_NAME" --source "$SOURCE" --out "$RUNNER_TEMP/otrust-out"
+          code=$?
+          set -e
+          case $code in
+            0) echo "result=PASSED" >> "$GITHUB_OUTPUT" ;;
+            1) echo "result=FAILED" >> "$GITHUB_OUTPUT" ;;
+            *) exit $code ;;
+          esac
+
+      - name: Upload certificate and evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: otrust-${{ inputs.image-artifact }}
+          path: ${{ runner.temp }}/otrust-out
+          if-no-files-found: error
+
+      - name: Enforce result
+        if: steps.assess.outputs.result == 'FAILED' && inputs.fail-on-failed-assessment
+        run: |
+          echo "::error::Assessment FAILED; the certificate records why"
+          exit 1

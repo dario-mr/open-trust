@@ -1,0 +1,61 @@
+# Vendor side of the demo: build the Spring Boot image (clean and deliberately vulnerable),
+# then hand each to the reusable assessor. Same-repository caller, so the trust level is
+# L1+ci-identity; an isolated assessor needs the caller to live in another repository.
+name: demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - examples/spring-boot-demo/**
+      - .github/workflows/demo.yml
+      - .github/workflows/assess.yml
+      - cmd/**
+      - internal/**
+      - profiles/**
+      - go.mod
+      - go.sum
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        variant: [clean, vulnerable]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build OCI image
+        run: |
+          docker buildx build --provenance=mode=min --sbom=false \
+            --build-arg VARIANT=${{ matrix.variant }} \
+            --output type=oci,dest=image.oci.tar examples/spring-boot-demo
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: demo-${{ matrix.variant }}
+          path: image.oci.tar
+          if-no-files-found: error
+
+  assess:
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [clean, vulnerable]
+    uses: ./.github/workflows/assess.yml
+    with:
+      image-artifact: demo-${{ matrix.variant }}
+      subject-name: example.com/open-trust-demo:${{ matrix.variant }}
+      source-path: examples/spring-boot-demo
+      # the vulnerable image is expected to fail; keep the run green and the certificate as the record
+      fail-on-failed-assessment: ${{ matrix.variant == 'clean' }}

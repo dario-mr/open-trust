@@ -97,7 +97,8 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 		"sbom", "--quiet", "--format", "json", "/work/sbom.cdx.json")
 	step("trivy-db", &ev.TrivyDB, r.Tools.Trivy.Image, nil,
 		"version", "--format", "json")
-	secretArgs := []string{"fs", "--quiet", "--scanners", "secret", "--format", "json"}
+	// --offline-scan: a secrets scan must not resolve dependencies over the network (leaks names; rate limits)
+	secretArgs := []string{"fs", "--quiet", "--offline-scan", "--scanners", "secret", "--format", "json"}
 	sastArgs := []string{"semgrep", "scan", "--metrics=off", "--quiet", "--json", "--config", r.Tools.Semgrep.Config}
 	if r.ExcludeRel != "" {
 		secretArgs = append(secretArgs, "--skip-dirs", "/src/"+filepath.ToSlash(r.ExcludeRel))

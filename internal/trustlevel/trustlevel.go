@@ -23,9 +23,9 @@ func Valid(s string) bool { return rank[s] > 0 }
 func AtLeast(level, min string) bool { return rank[level] > 0 && rank[level] >= rank[min] }
 
 // KnownAssessors are Build Signer URI prefixes of Open Trust's isolated assessment workflows.
-// shortcut: placeholder until the reusable workflow is published in week 4 (then pin to its real repo).
+// The verifier additionally requires the signer to live outside the assessed source repository.
 var KnownAssessors = []string{
-	"https://github.com/open-trust/assess/.github/workflows/assess.yml@",
+	"https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@",
 }
 
 // FromCertificate classifies a verified Fulcio certificate.

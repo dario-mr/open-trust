@@ -29,7 +29,7 @@ for c in clean vulnerable; do
 
   run "$SYFT" scan "oci-archive:/fx/build/$c.oci.tar" -o cyclonedx-json -q > "$out/sbom.cdx.json"
   run -e TRIVY_CACHE_DIR=/cache/trivy "$TRIVY" sbom --quiet --format json "/fx/$out/sbom.cdx.json" > "$out/vulns.json"
-  run -e TRIVY_CACHE_DIR=/cache/trivy "$TRIVY" fs --quiet --scanners secret --format json "/fx/src/$c/app" > "$out/secrets.json"
+  run -e TRIVY_CACHE_DIR=/cache/trivy "$TRIVY" fs --quiet --offline-scan --scanners secret --format json "/fx/src/$c/app" > "$out/secrets.json"
   # semgrep exits 1 when it has findings; that is a result, not an error
   run -e SEMGREP_SEND_METRICS=off "$SEMGREP" semgrep scan --metrics=off --quiet --json --config "$SEMGREP_CONFIG" "/fx/src/$c/app" > "$out/sast.json" || [ $? -eq 1 ]
 

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/dario-mr/open-trust/internal/assess"
+	"github.com/dario-mr/open-trust/internal/ci"
 	"github.com/dario-mr/open-trust/internal/signer"
 	"github.com/dario-mr/open-trust/internal/statement"
 	"github.com/dario-mr/open-trust/internal/verify"
@@ -78,6 +79,9 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Exceptions, "exceptions", "", "exceptions file (default: <source>/.otrust/exceptions.yaml)")
 	noSign := fs.Bool("no-sign", false, "write an unsigned statement only (local testing)")
 	keyPath := fs.String("key", "", "sign with this ECDSA P-256 private key (trust level L1); see `otrust keygen`")
+	keyless := fs.Bool("keyless", false, "sign with the CI's OIDC identity via Sigstore (Fulcio + Rekor)")
+	fulcioURL := fs.String("fulcio-url", signer.PublicGoodFulcio, "Fulcio URL for --keyless")
+	rekorURL := fs.String("rekor-url", signer.PublicGoodRekor, "Rekor URL for --keyless")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -86,10 +90,17 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		return 2
 	}
 	// an explicit choice: never emit an unsigned statement by accident
-	switch {
-	case *keyPath != "" && *noSign:
-		fmt.Fprintln(stderr, "--key and --no-sign are mutually exclusive")
+	chosen := 0
+	for _, b := range []bool{*keyPath != "", *keyless, *noSign} {
+		if b {
+			chosen++
+		}
+	}
+	if chosen != 1 {
+		fmt.Fprintln(stderr, "choose exactly one of --key <file>, --keyless, or --no-sign")
 		return 2
+	}
+	switch {
 	case *keyPath != "":
 		s, err := signer.LoadKey(*keyPath)
 		if err != nil {
@@ -97,9 +108,13 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 			return 2
 		}
 		o.Signer = s
-	case !*noSign:
-		fmt.Fprintln(stderr, "choose --key <file> to sign, or --no-sign for an unsigned statement (keyless signing arrives with CI support)")
-		return 2
+	case *keyless:
+		// fail fast if there is no identity at all; the token actually used is fetched after the scans
+		if _, err := ci.IDToken(ctx, "sigstore"); err != nil {
+			fmt.Fprintln(stderr, "otrust:", err)
+			return 2
+		}
+		o.Signer = signer.NewKeyless(func(ctx context.Context) (string, error) { return ci.IDToken(ctx, "sigstore") }, *fulcioURL, *rekorURL)
 	}
 
 	res, err := assess.Run(ctx, o)

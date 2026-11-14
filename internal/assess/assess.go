@@ -137,6 +137,12 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	}
 	trust := "unsigned"
 	if o.Signer != nil {
+		// keyless: fetch the short-lived token and certificate only now, after the scans
+		if p, ok := o.Signer.(interface{ Prepare(context.Context) error }); ok {
+			if err := p.Prepare(ctx); err != nil {
+				return nil, fmt.Errorf("signer: %w", err)
+			}
+		}
 		trust = o.Signer.TrustLevel()
 	}
 
