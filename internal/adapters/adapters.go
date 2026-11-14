@@ -35,18 +35,22 @@ type Evidence struct {
 	SAST     json.RawMessage
 	TrivyDB  json.RawMessage // `trivy version` output: vuln DB version + update time (not in scan JSON)
 	Commands map[string][]string
+	// NeutralizedIgnores lists vendor .semgrepignore files that were blanked for the SAST scan.
+	NeutralizedIgnores []string
 }
 
-func (r *Runner) docker(ctx context.Context, image string, okExit []int, args ...string) ([]byte, []string, error) {
+func (r *Runner) docker(ctx context.Context, image string, okExit []int, mounts []string, args ...string) ([]byte, []string, error) {
 	base := []string{"run", "--rm", "--platform", "linux/" + runtime.GOARCH,
 		"-v", r.SourceDir + ":/src:ro",
 		"-v", r.WorkDir + ":/work",
 		"-v", r.Subject + ":/subject:ro",
 		"-v", r.CacheVol + ":/cache",
 		"-e", "TRIVY_CACHE_DIR=/cache/trivy",
-		"-e", "SEMGREP_SEND_METRICS=off",
-		image}
-	full := append(base, args...)
+		"-e", "SEMGREP_SEND_METRICS=off"}
+	for _, m := range mounts {
+		base = append(base, "-v", m)
+	}
+	full := append(append(base, image), args...)
 	var out, errb bytes.Buffer
 	cmd := exec.CommandContext(ctx, "docker", full...)
 	cmd.Stdout, cmd.Stderr = &out, &errb
@@ -79,12 +83,13 @@ func tail(b []byte, n int) []byte {
 func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) {
 	ev := &Evidence{Commands: map[string][]string{}}
 	var err error
+	var mounts []string // per-step extra mounts; only the SAST step sets them
 	step := func(name string, out *json.RawMessage, image string, okExit []int, args ...string) {
 		if err != nil {
 			return
 		}
 		var cmd []string
-		*out, cmd, err = r.docker(ctx, image, okExit, args...)
+		*out, cmd, err = r.docker(ctx, image, okExit, mounts, args...)
 		ev.Commands[name] = cmd
 	}
 
@@ -105,7 +110,39 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 		sastArgs = append(sastArgs, "--exclude", filepath.ToSlash(r.ExcludeRel))
 	}
 	step("secrets", &ev.Secrets, r.Tools.Trivy.Image, nil, append(secretArgs, "/src")...)
+
+	// A vendor .semgrepignore (at any depth) can exclude every file from SAST, so the profile's
+	// SAST claim would be empty. Blank each one with a read-only empty file over it; the vendor's
+	// tree itself is mounted read-only and left untouched.
+	if err == nil {
+		var empty string
+		if ev.NeutralizedIgnores, err = findSemgrepIgnores(r.SourceDir, r.ExcludeRel); err == nil && len(ev.NeutralizedIgnores) > 0 {
+			empty = filepath.Join(r.WorkDir, ".otrust-empty-ignore")
+			err = os.WriteFile(empty, nil, 0o644)
+			for _, rel := range ev.NeutralizedIgnores {
+				mounts = append(mounts, empty+":/src/"+filepath.ToSlash(rel)+":ro")
+			}
+		}
+	}
 	// semgrep exits 1 when it has findings: a result, not an error
 	step("sast", &ev.SAST, r.Tools.Semgrep.Image, []int{1}, append(sastArgs, "/src")...)
 	return ev, err
+}
+
+func findSemgrepIgnores(root, excludeRel string) ([]string, error) {
+	var found []string
+	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(root, p)
+		if d.IsDir() && (d.Name() == ".git" || (excludeRel != "" && rel == excludeRel)) {
+			return filepath.SkipDir
+		}
+		if !d.IsDir() && d.Name() == ".semgrepignore" {
+			found = append(found, rel)
+		}
+		return nil
+	})
+	return found, err
 }

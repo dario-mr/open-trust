@@ -161,9 +161,10 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 		CI:            env,
 		TrustLevel:    trust,
 		Tools: map[string]any{
-			"syft":    tools.Syft,
-			"trivy":   map[string]any{"version": tools.Trivy.Version, "image": tools.Trivy.Image, "db": trivyDB},
-			"semgrep": tools.Semgrep,
+			"syft":  tools.Syft,
+			"trivy": map[string]any{"version": tools.Trivy.Version, "image": tools.Trivy.Image, "db": trivyDB},
+			"semgrep": map[string]any{"version": tools.Semgrep.Version, "image": tools.Semgrep.Image, "config": tools.Semgrep.Config,
+				"neutralizedIgnoreFiles": nonNil(ev.NeutralizedIgnores)},
 		},
 		Decision:       dec,
 		Evidence:       evidenceDigests(digests),
@@ -228,4 +229,11 @@ func selfDigest() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
 }

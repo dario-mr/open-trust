@@ -59,7 +59,8 @@ open-trust/
 ├── .github/workflows/release.yml  # builds + signs otrust itself
 ├── trust/                 # published static: trusted_root.json, revocations.json, profiles index
 ├── test/adversarial/      # one script per attack in §6, run per CI where relevant
-└── examples/spring-boot-demo/   # with both GitHub and GitLab pipelines
+# the vendor demo lives in its own repository, github.com/dario-mr/open-trust-demo, so its calls to
+# the reusable assessor cross a repository boundary (required for L1+isolated-assessor)
 ```
 
 The CI templates are only a convenience. Every one of them reduces to `otrust assess --image <ref|dir> --profile supply-chain-baseline@v1`.

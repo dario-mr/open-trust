@@ -8,19 +8,7 @@
 
 ## Verify the demo yourself
 
-The [`demo`](.github/workflows/demo.yml) workflow builds a Spring Boot image twice: clean, and with log4j 2.14.1. It assesses each one with the reusable [`assess.yml`](.github/workflows/assess.yml) and signs keyless with the workflow's GitHub OIDC identity.
-
-```bash
-go build -o otrust ./cmd/otrust
-gh run download <run-id> -n demo-clean -n otrust-demo-clean   # image + certificate + evidence
-./otrust verify otrust-demo-clean/certificate.sigstore.json \
-  --image demo-clean/image.oci.tar \
-  --trust-policy examples/spring-boot-demo/trust.yaml \
-  --trusted-root internal/verify/testdata/public-good-trusted-root.json \
-  --evidence otrust-demo-clean
-```
-
-`VERIFIED` (exit 0). The vulnerable image gives `ASSESSMENT_FAILED` (exit 10) with the Log4Shell CVEs listed. Any other image gives `ARTIFACT_MISMATCH` (exit 14). A trust policy that demands an isolated assessor gives `TRUST_LEVEL_TOO_LOW` (exit 13), because this demo's caller is in the same repository.
+The vendor side lives in a separate repository, **[dario-mr/open-trust-demo](https://github.com/dario-mr/open-trust-demo)**. It is a Spring Boot app, built clean and with log4j 2.14.1. Its workflow can only *call* this repository's reusable [`assess.yml`](.github/workflows/assess.yml), pinned by commit. It can't add steps to it. So the signature proves the assessment ran unmodified, at trust level `L1+isolated-assessor`. The demo repository's README has the exact verify commands.
 
 ## Use it
 
@@ -28,11 +16,11 @@ gh run download <run-id> -n demo-clean -n otrust-demo-clean   # image + certific
 |---|---|
 | Key-signed (`L1`), any CI | `otrust keygen --out vendor` then `otrust assess --key vendor.key --image img.oci.tar --source .` |
 | Keyless (`L1+ci-identity`), GitHub Actions or any CI exposing `SIGSTORE_ID_TOKEN` | `otrust assess --keyless --image img.oci.tar --source .` |
-| Reusable workflow (GitHub) | `uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>` (see the header of [assess.yml](.github/workflows/assess.yml)) |
+| Reusable workflow (GitHub), `L1+isolated-assessor` when called from another repository | `uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>` (see the header of [assess.yml](.github/workflows/assess.yml)) |
 | Customer | `otrust verify cert.sigstore.json --image img.oci.tar --trust-policy trust.yaml [--trusted-root root.json] [--evidence dir] [--revocations file]` |
 
 The scanners run in pinned containers, so Docker is required on the assessing side.
 
 ## Repository
 
-`cmd/otrust` · `internal/` (subject, ci, adapters, policy, statement, signer, trustlevel, verify) · `profiles/supply-chain-baseline/v1` (spec, Rego policy, real-output fixtures) · `examples/spring-boot-demo` · [poc-plan.md](poc-plan.md) · [research/](research/)
+`cmd/otrust` · `internal/` (subject, ci, adapters, policy, statement, signer, trustlevel, verify) · `profiles/supply-chain-baseline/v1` (spec, Rego policy, real-output fixtures) · [poc-plan.md](poc-plan.md) · [research/](research/)

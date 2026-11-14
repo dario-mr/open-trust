@@ -117,3 +117,39 @@ func TestE2EOutDirInsideSourceIsExcluded(t *testing.T) {
 		}
 	}
 }
+
+// A vendor .semgrepignore must not be able to blind the SAST check.
+func TestE2EVendorSemgrepignoreIsNeutralized(t *testing.T) {
+	e2e(t)
+	src := t.TempDir()
+	vuln := filepath.Join(fx, "src", "vulnerable", "app")
+	b, err := os.ReadFile(filepath.Join(vuln, "Main.java"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(filepath.Join(src, "sub"), 0o755)
+	os.WriteFile(filepath.Join(src, "sub", "Main.java"), b, 0o644)
+	os.WriteFile(filepath.Join(src, ".semgrepignore"), []byte("*\n"), 0o644)
+	os.WriteFile(filepath.Join(src, "sub", ".semgrepignore"), []byte("*\n"), 0o644)
+	// docker (Colima) can only mount under $HOME, so stage the source there
+	staged, _ := filepath.Abs("../../otrust-out/e2e/semgrepignore-src")
+	os.RemoveAll(staged)
+	if err := os.CopyFS(staged, os.DirFS(src)); err != nil {
+		t.Fatal(err)
+	}
+	r, err := Run(context.Background(), Options{Image: filepath.Join(fx, "build", "vulnerable.oci.tar"),
+		SourceDir: staged, OutDir: outDir(t, "semgrepignore"), Revision: "e2e"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range r.Decision.Checks {
+		if c.ID == "sast" && c.Result != "FAILED" {
+			t.Fatalf("sast = %s %v: the vendor's .semgrepignore hid the SQL injection", c.Result, c.Findings)
+		}
+	}
+	ext := r.Statement.Predicate[statement.ExtensionKey].(statement.Extension)
+	got := ext.Tools["semgrep"].(map[string]any)["neutralizedIgnoreFiles"].([]string)
+	if len(got) != 2 {
+		t.Fatalf("neutralized ignore files = %v, want both recorded", got)
+	}
+}
