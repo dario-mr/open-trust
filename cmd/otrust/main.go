@@ -9,9 +9,12 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strings"
+	"path/filepath"
 
 	"github.com/dario-mr/open-trust/internal/assess"
+	"github.com/dario-mr/open-trust/internal/signer"
+	"github.com/dario-mr/open-trust/internal/statement"
+	"github.com/dario-mr/open-trust/internal/verify"
 )
 
 // Exit codes: 0 PASSED, 1 assessment FAILED, 2 usage or runtime error.
@@ -23,19 +26,43 @@ func main() {
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: otrust assess --image <oci-layout> --no-sign [flags]")
+		fmt.Fprintln(stderr, `usage:
+  otrust keygen --out <prefix>
+  otrust assess --image <oci-layout> (--key <file> | --no-sign) [flags]
+  otrust verify <certificate.sigstore.json> --image <oci-layout> --trust-policy <trust.yaml> [flags]`)
 		return 2
 	}
 	switch args[0] {
 	case "assess":
 		return cmdAssess(ctx, args[1:], stdout, stderr)
+	case "verify":
+		return cmdVerify(ctx, args[1:], stdout, stderr)
+	case "keygen":
+		return cmdKeygen(args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, assess.Version)
 		return 0
 	default:
-		fmt.Fprintf(stderr, "unknown command %q (commands: assess, version)\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q (commands: assess, verify, keygen, version)\n", args[0])
 		return 2
 	}
+}
+
+func cmdKeygen(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("keygen", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	out := fs.String("out", "otrust", "writes <out>.key (private, 0600) and <out>.pub")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	hint, err := signer.GenerateKey(*out)
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", err)
+		return 2
+	}
+	fmt.Fprintf(stdout, "wrote %s.key and %s.pub (key hint %s)\n", *out, *out, hint)
+	fmt.Fprintf(stdout, "give %s.pub to customers for their trust policy; keep %s.key secret\n", *out, *out)
+	return 0
 }
 
 func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -49,7 +76,8 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Repo, "source-repo", "", "source repository URI (default: git remote origin)")
 	fs.StringVar(&o.Revision, "source-revision", "", "source revision (default: git HEAD)")
 	fs.StringVar(&o.Exceptions, "exceptions", "", "exceptions file (default: <source>/.otrust/exceptions.yaml)")
-	noSign := fs.Bool("no-sign", false, "write an unsigned statement (required until signing lands in week 3)")
+	noSign := fs.Bool("no-sign", false, "write an unsigned statement only (local testing)")
+	keyPath := fs.String("key", "", "sign with this ECDSA P-256 private key (trust level L1); see `otrust keygen`")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -57,9 +85,20 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		fmt.Fprintln(stderr, "--image is required")
 		return 2
 	}
-	if !*noSign {
-		// fail loudly rather than emit something that looks like a certificate
-		fmt.Fprintln(stderr, "signing is not implemented yet; pass --no-sign to write an unsigned statement")
+	// an explicit choice: never emit an unsigned statement by accident
+	switch {
+	case *keyPath != "" && *noSign:
+		fmt.Fprintln(stderr, "--key and --no-sign are mutually exclusive")
+		return 2
+	case *keyPath != "":
+		s, err := signer.LoadKey(*keyPath)
+		if err != nil {
+			fmt.Fprintln(stderr, "otrust:", err)
+			return 2
+		}
+		o.Signer = s
+	case !*noSign:
+		fmt.Fprintln(stderr, "choose --key <file> to sign, or --no-sign for an unsigned statement (keyless signing arrives with CI support)")
 		return 2
 	}
 
@@ -100,8 +139,108 @@ func printSummary(w io.Writer, r *assess.Result) {
 		fmt.Fprintf(w, "Exceptions ignored (invalid or expired): %d\n", n)
 	}
 	fmt.Fprintf(w, "\nResult    %s\n", d.Result)
-	fmt.Fprintln(w, "Trust     unsigned (no signature; for local testing only)")
-	fmt.Fprintf(w, "Output    %s\n", strings.TrimSuffix(r.OutDir, "/")+"/statement.json")
+	if r.Signed {
+		ext := r.Statement.Predicate[statement.ExtensionKey].(statement.Extension)
+		fmt.Fprintf(w, "Trust     %s\n", ext.TrustLevel)
+		fmt.Fprintf(w, "Output    %s  (give this and the image to customers)\n", filepath.Join(r.OutDir, assess.BundleFile))
+	} else {
+		fmt.Fprintln(w, "Trust     unsigned (no signature; for local testing only)")
+		fmt.Fprintf(w, "Output    %s\n", filepath.Join(r.OutDir, "statement.json"))
+	}
+	fmt.Fprintf(w, "Evidence  %s  (stays with you; share only if you choose)\n", r.OutDir)
+}
+
+func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var o verify.Options
+	fs.StringVar(&o.Image, "image", "", "the OCI image layout (directory or tar) you received (required)")
+	fs.StringVar(&o.TrustPolicy, "trust-policy", "", "trust.yaml listing the signers you accept (required)")
+	fs.StringVar(&o.Evidence, "evidence", "", "evidence directory shared by the vendor: re-checks digests and re-runs the policy")
+	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (needed for keyless/CI-signed certificates)")
+	fs.StringVar(&o.Revocations, "revocations", "", "revocations.json")
+	// flags may follow the positional certificate path
+	var pos []string
+	for len(args) > 0 {
+		if err := fs.Parse(args); err != nil {
+			return 2
+		}
+		if fs.NArg() == 0 {
+			break
+		}
+		pos, args = append(pos, fs.Arg(0)), fs.Args()[1:]
+	}
+	if len(pos) != 1 || o.Image == "" {
+		fmt.Fprintln(stderr, "usage: otrust verify <certificate.sigstore.json> --image <oci-layout> --trust-policy <trust.yaml> [flags]")
+		return 2
+	}
+	o.Bundle = pos[0]
+	r, err := verify.Verify(ctx, o)
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", err)
+		return 2
+	}
+	printReport(stdout, r)
+	return verify.ExitCodes[r.Code]
+}
+
+func printReport(w io.Writer, r *verify.Report) {
+	ok := func(cond bool) string {
+		if cond {
+			return "✔"
+		}
+		return "✘"
+	}
+	reached := func(c verify.Code) bool { return r.Code == verify.OK || order[r.Code] > order[c] }
+	if r.SignerIdentity != "" {
+		fmt.Fprintf(w, "%s Signature   %s\n", ok(reached(verify.InvalidSignature)), r.SignerIdentity)
+	}
+	if reached(verify.UntrustedSigner) {
+		fmt.Fprintf(w, "✔ Signer      %q in your trust policy\n", r.SignerName)
+	}
+	if p := r.Predicate; p != nil {
+		e := p.Ext
+		fmt.Fprintf(w, "%s Artifact    %s\n", ok(reached(verify.ArtifactMismatch)), r.SubjectDigest)
+		fmt.Fprintf(w, "  Source      %s @ %s (%s)\n", orDash(e.CI.Repo), e.CI.Revision, e.CI.Provider)
+		fmt.Fprintf(w, "  Profile     %s\n", p.Policy.URI)
+		fmt.Fprintf(w, "  Assessed    %s, valid until %s\n", p.TimeVerified, e.ValidUntil)
+		fmt.Fprintf(w, "  Trust level %s\n", r.TrustLevel)
+		fmt.Fprintln(w, "  Checks:")
+		for _, c := range e.Checks {
+			fmt.Fprintf(w, "    %-16s %s\n", c.ID, c.Result)
+			for _, f := range c.Findings {
+				fmt.Fprintf(w, "      - %s\n", f)
+			}
+		}
+		// always shown, even on PASSED
+		for _, x := range e.Exceptions {
+			fmt.Fprintf(w, "  Exception   %s %s (expires %s): %s\n", x.Check, x.ID, x.Expires, x.Reason)
+		}
+		for _, u := range e.UnmetRequirements {
+			fmt.Fprintf(w, "  Unmet       %s\n", u)
+		}
+		for _, l := range e.Limitations {
+			fmt.Fprintf(w, "  Limitation  %s\n", l)
+		}
+		if r.EvidenceChecked {
+			fmt.Fprintln(w, "✔ Evidence    digests match and the policy re-evaluates to the same results")
+		}
+	}
+	for _, n := range r.Notes {
+		fmt.Fprintf(w, "ℹ %s\n", n)
+	}
+	if r.Code == verify.OK {
+		fmt.Fprintln(w, "\nVERIFIED")
+	} else {
+		fmt.Fprintf(w, "\n%s: %s\n", r.Code, r.Reason)
+	}
+}
+
+// order mirrors the sequence of checks in verify.Verify, for the ✔/✘ marks.
+var order = map[verify.Code]int{
+	verify.InvalidSignature: 1, verify.UntrustedSigner: 2, verify.Malformed: 3, verify.PolicyUnknown: 4,
+	verify.ArtifactMismatch: 5, verify.TrustLevelTooLow: 6, verify.Revoked: 7, verify.Expired: 8,
+	verify.EvidenceMissing: 9, verify.EvidenceMismatch: 9, verify.AssessmentFailed: 10,
 }
 
 func orDash(s string) string {

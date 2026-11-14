@@ -42,8 +42,19 @@ type Check struct {
 	EvidenceDigest Digest   `json:"evidenceDigest,omitempty"`
 }
 
+// EvidenceFiles maps a check to the evidence file it was evaluated on (written next to the statement).
+var EvidenceFiles = map[string]string{
+	"sbom": "sbom.cdx.json", "vulns": "vulns.json", "secrets": "secrets.json",
+	"sast": "sast.json", "provenance": "provenance.json",
+}
+
+// ContextFile holds the non-scanner policy input (time, subject, provenance status, exceptions);
+// with the evidence files it reconstructs the exact policy input, so a verifier can re-evaluate.
+const ContextFile = "context.json"
+
 type Extension struct {
 	AgentDigest       Digest             `json:"agentDigest"`
+	ContextDigest     Digest             `json:"contextDigest"`
 	CI                ci.Env             `json:"ci"`
 	ValidUntil        string             `json:"validUntil"`
 	TrustLevel        string             `json:"trustLevel"`
@@ -67,6 +78,7 @@ type Params struct {
 	Decision       *policy.Decision
 	Evidence       map[string]string // check id → sha256 hex of its evidence file
 	ProvenanceHash string            // sha256 hex of the provenance attestation used, if any
+	ContextDigest  string            // sha256 hex of ContextFile
 }
 
 // limitations every certificate carries (profile.md §2); trust-level specific ones are appended.
@@ -87,8 +99,13 @@ func Build(p Params) *Statement {
 		checks = append(checks, ck)
 	}
 	lim := append([]string{}, baseLimitations...)
-	if p.TrustLevel == "unsigned" {
+	switch p.TrustLevel {
+	case "unsigned":
 		lim = append(lim, "Unsigned: origin and integrity of this statement cannot be verified")
+	case "L1":
+		lim = append(lim, "Signed with a vendor-held key: proves who signed, not which pipeline ran the assessment")
+	case "L1+ci-identity":
+		lim = append(lim, "The vendor's own CI pipeline ran and signed the assessment; it was not an isolated assessor")
 	}
 
 	levels := []string{scb.VSALevel}
@@ -115,6 +132,7 @@ func Build(p Params) *Statement {
 		"verifiedLevels":     levels,
 		ExtensionKey: Extension{
 			AgentDigest:       Digest{"sha256": p.AgentDigest},
+			ContextDigest:     Digest{"sha256": p.ContextDigest},
 			CI:                p.CI,
 			ValidUntil:        p.Time.Add(Validity).UTC().Format(time.RFC3339),
 			TrustLevel:        p.TrustLevel,

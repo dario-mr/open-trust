@@ -16,6 +16,19 @@ import (
 	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
 
+// Context is the policy input minus scanner evidence. It is written to context.json and bound
+// to the statement by digest, so a verifier can rebuild the exact Input from it plus the evidence files.
+type Context struct {
+	Now        string      `json:"now"`
+	Subject    SubjectIn   `json:"subject"`
+	Provenance Provenance  `json:"provenance"`
+	Exceptions []Exception `json:"exceptions"`
+}
+
+func (c Context) Input(ev EvidenceIn) *Input {
+	return &Input{Now: c.Now, Subject: c.Subject, Provenance: c.Provenance, Evidence: ev, Exceptions: c.Exceptions}
+}
+
 // Input is the document described in profile.md §4.
 type Input struct {
 	Now        string      `json:"now"`

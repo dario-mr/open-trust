@@ -52,7 +52,7 @@ The reference invocations are in [`fixtures/generate.sh`](fixtures/generate.sh):
 
 ## 4. Policy input
 
-The agent builds one JSON document. [`fixtures/inputs/*/input.json`](fixtures/inputs/) are real examples.
+The agent builds one JSON document. [`fixtures/inputs/*/input.json`](fixtures/inputs/) are real examples. `otrust assess` doesn't write it as one file. Instead, it writes `context.json` (everything except `evidence`) next to the raw evidence files. Both are bound to the certificate by digest, so a verifier given the evidence directory rebuilds this exact document and re-runs the policy.
 
 ```jsonc
 {

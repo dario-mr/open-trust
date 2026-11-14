@@ -173,7 +173,23 @@ Original scope:
 - The `ci` interface with a **generic** adapter first (all values from flags or env). It must run on a laptop with `--no-sign`.
 - **Exit:** correct statement and evidence for a passing image and a failing image, run locally, with no CI involved.
 
-### Week 3: signing and `otrust verify` (Phase 3)
+### Week 3: signing and `otrust verify` (Phase 3). Done
+Delivered as `internal/{signer,trustlevel,verify}`, plus `otrust keygen`, `assess --key` and `otrust verify`.
+
+**Exit met:** a key-signed certificate verified offline in a `--network none` container. That was a container on the same Mac, not a separate physical machine. Results:
+- clean: `VERIFIED`, with the evidence re-evaluated;
+- vulnerable: `ASSESSMENT_FAILED`;
+- the wrong image: `ARTIFACT_MISMATCH`.
+
+What was built and tested:
+- Hermetic tamper tests cover every code, plus `MALFORMED` and `POLICY_UNKNOWN`, which the original list lacked.
+- `EVIDENCE_MISSING` is now split out from `EVIDENCE_MISMATCH`.
+- The keyless *verify* path is tested against a real GitHub-signed bundle.
+- A new `context.json` (time, subject, provenance status, exceptions) is digest-bound in the certificate, so `--evidence` re-runs the exact policy input. It catches a vendor that signs honest evidence digests but a dishonest summary.
+
+**Deviation:** keyless *signing* moved to week 4, which needs a real CI OIDC token to test. Revocations are an unsigned local file for now; signing it is week 5.
+
+Original scope:
 - The `Signer` interface: sigstore-keyless (any Fulcio issuer) and a key file. A KMS key comes later behind the same interface.
 - `trustlevel` package, shared by `assess` and `verify`.
 - `otrust verify cert.sigstore.json --image <dir|ref> --trust-policy trust.yaml [--evidence dir] [--trusted-root file] [--revocations file]`

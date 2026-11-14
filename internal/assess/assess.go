@@ -17,6 +17,7 @@ import (
 	"github.com/dario-mr/open-trust/internal/adapters"
 	"github.com/dario-mr/open-trust/internal/ci"
 	"github.com/dario-mr/open-trust/internal/policy"
+	"github.com/dario-mr/open-trust/internal/signer"
 	"github.com/dario-mr/open-trust/internal/statement"
 	"github.com/dario-mr/open-trust/internal/subject"
 	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
@@ -31,8 +32,12 @@ type Options struct {
 	OutDir     string
 	Repo       string
 	Revision   string
-	Exceptions string // path; default <source>/.otrust/exceptions.yaml
+	Exceptions string        // path; default <source>/.otrust/exceptions.yaml
+	Signer     signer.Signer // nil: unsigned statement only (local testing)
 }
+
+// BundleFile is the signed certificate a vendor hands to customers (with the image).
+const BundleFile = "certificate.sigstore.json"
 
 type Result struct {
 	Statement *statement.Statement
@@ -40,6 +45,7 @@ type Result struct {
 	Subject   *subject.Subject
 	CI        ci.Env
 	OutDir    string
+	Signed    bool
 }
 
 func Run(ctx context.Context, o Options) (*Result, error) {
@@ -106,28 +112,32 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	}
 
 	now := time.Now().UTC().Truncate(time.Second)
-	in := &policy.Input{
+	pctx := policy.Context{
 		Now:     now.Format(time.RFC3339),
 		Subject: policy.SubjectIn{Digest: subj.Digest, AssessedDigest: subj.Digest},
 		Provenance: policy.Provenance{
 			Present: subj.Provenance != nil,
 			// BuildKit provenance is unsigned and bound to the image only by the index annotation.
-			// shortcut: signed/trusted provenance (GitHub attest-build-provenance bundles) is verified in weeks 3–4.
+			// shortcut: signed/trusted provenance (GitHub attest-build-provenance bundles) is verified in week 4.
 			SubjectMatch: subj.Provenance != nil,
 		},
-		Evidence:   policy.EvidenceIn{SBOM: ev.SBOM, Vulns: ev.Vulns, Secrets: ev.Secrets, SAST: ev.SAST},
 		Exceptions: exceptions,
 	}
-	inputJSON, err := json.MarshalIndent(in, "", "  ")
+	ctxJSON, err := json.MarshalIndent(pctx, "", "  ")
 	if err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(filepath.Join(out, "input.json"), inputJSON, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(out, statement.ContextFile), ctxJSON, 0o644); err != nil {
 		return nil, err
 	}
-	dec, err := policy.Evaluate(ctx, in)
+	os.Remove(filepath.Join(out, "input.json")) // pre-week-3 layout
+	dec, err := policy.Evaluate(ctx, pctx.Input(policy.EvidenceIn{SBOM: ev.SBOM, Vulns: ev.Vulns, Secrets: ev.Secrets, SAST: ev.SAST}))
 	if err != nil {
 		return nil, err
+	}
+	trust := "unsigned"
+	if o.Signer != nil {
+		trust = o.Signer.TrustLevel()
 	}
 
 	agent, err := selfDigest()
@@ -143,19 +153,16 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 		AgentDigest:   agent,
 		Time:          now,
 		CI:            env,
-		TrustLevel:    "unsigned", // set from the signer in week 3
+		TrustLevel:    trust,
 		Tools: map[string]any{
 			"syft":    tools.Syft,
 			"trivy":   map[string]any{"version": tools.Trivy.Version, "image": tools.Trivy.Image, "db": trivyDB},
 			"semgrep": tools.Semgrep,
 		},
-		Decision: dec,
-		Evidence: map[string]string{
-			"sbom": digests["sbom.cdx.json"], "vulns": digests["vulns.json"],
-			"secrets": digests["secrets.json"], "sast": digests["sast.json"],
-			"provenance": digests["provenance.json"],
-		},
+		Decision:       dec,
+		Evidence:       evidenceDigests(digests),
 		ProvenanceHash: digests["provenance.json"],
+		ContextDigest:  sha256hex(ctxJSON),
 	})
 	stJSON, err := json.MarshalIndent(st, "", "  ")
 	if err != nil {
@@ -164,7 +171,28 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	if err := os.WriteFile(filepath.Join(out, "statement.json"), stJSON, 0o644); err != nil {
 		return nil, err
 	}
-	return &Result{Statement: st, Decision: dec, Subject: subj, CI: env, OutDir: out}, nil
+	res := &Result{Statement: st, Decision: dec, Subject: subj, CI: env, OutDir: out}
+	bundlePath := filepath.Join(out, BundleFile)
+	os.Remove(bundlePath) // never leave a stale certificate next to new evidence
+	if o.Signer != nil {
+		b, err := o.Signer.Sign(ctx, stJSON)
+		if err != nil {
+			return nil, fmt.Errorf("sign: %w", err)
+		}
+		if err := os.WriteFile(bundlePath, b, 0o644); err != nil {
+			return nil, err
+		}
+		res.Signed = true
+	}
+	return res, nil
+}
+
+func evidenceDigests(byFile map[string]string) map[string]string {
+	m := map[string]string{}
+	for check, f := range statement.EvidenceFiles {
+		m[check] = byFile[f]
+	}
+	return m
 }
 
 func nameOr(name, path string) string {
