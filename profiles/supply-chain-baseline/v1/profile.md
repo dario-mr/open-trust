@@ -32,7 +32,7 @@ The certificate always lists warnings, exceptions and unmet requirements. A PASS
 
 ## 3. Required tools
 
-Container images are pinned by multi-arch index digest. Use the native platform for the runner.
+Container images are pinned by multi-arch index digest. Use the native platform for the runner. The machine-readable source of these pins is [`tools.json`](tools.json). It is embedded in `otrust` and read by `fixtures/generate.sh` and `test.sh`, so edit it there, not only here.
 
 | Check | Tool | Version | Image |
 |---|---|---|---|
@@ -126,8 +126,9 @@ This profile's rules are identical at every level. Only how far a buyer can trus
 
 Found while generating the fixtures:
 
-- **The Semgrep ruleset is not pinned by content.** `p/java` comes from the Semgrep registry at run time. Week 2 must pin a ruleset snapshot and record its digest. Before shipping it, check the licence terms of the registry rules for redistribution.
+- **The Semgrep ruleset is not pinned by content.** `p/java` comes from the Semgrep registry at run time. A ruleset snapshot must be pinned, and its digest recorded, before v1.0.0 is final. This is still open after week 2. Before shipping it, check the licence terms of the registry rules for redistribution.
 - **`p/java` did not flag** `Runtime.getRuntime().exec("sh -c " + input)` in the fixture. It flagged only the SQL injection. Claim 4 is limited to what the ruleset covers.
-- **Trivy's JSON output does not record the vulnerability DB version.** The agent must capture it separately (`trivy version --format json`) and put it in the certificate.
+- **Trivy's JSON output does not record the vulnerability DB version.** `otrust` captures it separately with `trivy version --format json`. It stores the result as evidence (`trivy-db.json`) and in the certificate (`tools.trivy.db`).
+- **BuildKit provenance** (`--provenance=mode=min`) is SLSA v0.2, unsigned, and has an empty `subject`. It is bound to the image only by the OCI index annotation `vnd.docker.reference.digest`. `otrust` accepts it as present, so the provenance check gives WARN (unsigned). Signed provenance (e.g. GitHub `attest-build-provenance`) is weeks 3–4.
 - Semgrep and Trivy report paths as the scanner saw them (container paths). Exception keys use those paths.
 - Subject digests are only stable when builds are reproducible. The fixtures use `SOURCE_DATE_EPOCH=0` and `rewrite-timestamp=true`, and checksum-pinned `ADD`, and rebuilds give identical manifest digests. Vendor builds may not be reproducible. That is fine, because the certificate binds to whatever digest was built, but "rebuild and compare" is not available to buyers.

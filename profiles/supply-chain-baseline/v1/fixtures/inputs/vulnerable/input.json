@@ -1,5 +1,5 @@
 {
-  "now": "2026-11-14T12:04:30Z",
+  "now": "2026-11-14T12:18:22Z",
   "subject": {
     "digest": "sha256:f0df5c581c9c411a5bf376c7f5d82534b07d4072da975bf2f0c2f552caf2be07",
     "assessed_digest": "sha256:f0df5c581c9c411a5bf376c7f5d82534b07d4072da975bf2f0c2f552caf2be07"
@@ -15,10 +15,10 @@
       "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
       "bomFormat": "CycloneDX",
       "specVersion": "1.7",
-      "serialNumber": "urn:uuid:3fdbf18f-8245-4487-8c1b-5a8ef715936f",
+      "serialNumber": "urn:uuid:9854ebac-c376-40e0-9722-dba1ec3d005c",
       "version": 1,
       "metadata": {
-        "timestamp": "2026-11-14T12:04:37Z",
+        "timestamp": "2026-11-14T12:18:29Z",
         "tools": {
           "components": [
             {
@@ -137,8 +137,8 @@
       "Trivy": {
         "Version": "0.76.1"
       },
-      "ReportID": "01a1d9f1-febc-781e-9a48-3c76c63e1aec",
-      "CreatedAt": "2026-11-14T12:04:37.692533084Z",
+      "ReportID": "01a1d9fe-af76-7adf-800a-40f312f463d6",
+      "CreatedAt": "2026-11-14T12:18:29.366713188Z",
       "ArtifactName": "/fx/build/vulnerable/sbom.cdx.json",
       "ArtifactType": "cyclonedx",
       "Results": [
@@ -839,8 +839,8 @@
       "Trivy": {
         "Version": "0.76.1"
       },
-      "ReportID": "01a1d9f2-0014-7275-888d-b10b107b9a3d",
-      "CreatedAt": "2026-11-14T12:04:38.036162043Z",
+      "ReportID": "01a1d9fe-b0a2-79b0-96b4-3b168c5f23cc",
+      "CreatedAt": "2026-11-14T12:18:29.666636737Z",
       "ArtifactName": "/fx/src/vulnerable/app",
       "ArtifactType": "filesystem",
       "Results": [
@@ -1090,18 +1090,18 @@
       },
       "time": {
         "rules": [],
-        "rules_parse_time": 0.05475902557373047,
+        "rules_parse_time": 0.039411067962646484,
         "profiling_times": {
-          "config_time": 0.24922680854797363,
-          "core_time": 0.40312981605529785,
-          "ignores_time": 0.0001251697540283203,
-          "total_time": 0.6628866195678711
+          "config_time": 0.23566651344299316,
+          "core_time": 0.4056870937347412,
+          "ignores_time": 0.0001285076141357422,
+          "total_time": 0.6497020721435547
         },
         "parsing_time": {
-          "total_time": 0.008210897445678711,
+          "total_time": 0.010869026184082031,
           "per_file_time": {
-            "mean": 0.0010263621807098389,
-            "std_dev": 0.0000073719778788117205
+            "mean": 0.001358628273010254,
+            "std_dev": 0.000012918504339154424
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -1110,9 +1110,9 @@
           "very_slow_files": []
         },
         "scanning_time": {
-          "total_time": 0.023595094680786133,
+          "total_time": 0.023363113403320312,
           "per_file_time": {
-            "mean": 0.023595094680786133,
+            "mean": 0.023363113403320312,
             "std_dev": 0.0
           },
           "very_slow_stats": {
@@ -1122,10 +1122,10 @@
           "very_slow_files": []
         },
         "matching_time": {
-          "total_time": 0.012428998947143555,
+          "total_time": 0.008836030960083008,
           "per_file_and_rule_time": {
-            "mean": 0.0015536248683929443,
-            "std_dev": 0.000005211483439460096
+            "mean": 0.001104503870010376,
+            "std_dev": 0.000002380837002213809
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -1134,10 +1134,10 @@
           "very_slow_rules_on_files": []
         },
         "tainting_time": {
-          "total_time": 0.001081228256225586,
+          "total_time": 0.0015366077423095703,
           "per_def_and_rule_time": {
-            "mean": 0.0000386152948651995,
-            "std_dev": 4.2244992810036804E-9
+            "mean": 0.00005487884793962751,
+            "std_dev": 1.5012988657236766E-8
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -1156,7 +1156,7 @@
         },
         "targets": [],
         "total_bytes": 0,
-        "max_memory_bytes": 130929792
+        "max_memory_bytes": 131191936
       },
       "engine_requested": "OSS",
       "skipped_rules": [],

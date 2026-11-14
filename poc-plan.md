@@ -157,7 +157,18 @@ Delivered in [profiles/supply-chain-baseline/v1/](profiles/supply-chain-baseline
 - `policy.rego` and `policy_test.rego`, plus fixture evidence: one passing set, one failing set per rule, one with an exception.
 - **Exit:** `opa test` passes, and a second person evaluates the fixtures by hand from `profile.md` and reaches the same results.
 
-### Week 2: `otrust assess`, CI-agnostic (Phase 2)
+### Week 2: `otrust assess`, CI-agnostic (Phase 2). Done
+Delivered as `cmd/otrust` plus `internal/{subject,ci,adapters,policy,statement,assess}`.
+- `otrust assess --no-sign` gives PASSED (exit 0) on the clean fixture and FAILED (exit 1) on the vulnerable one.
+- Unit tests, plus e2e tests against the real scanners (`OTRUST_E2E=1`).
+
+Shortcuts carried forward:
+- scanners run through Docker only, with no pinned-binary mode yet;
+- single-platform OCI layouts only;
+- registry refs are not supported yet;
+- BuildKit provenance is accepted unsigned (WARN).
+
+Original scope:
 - Subject digest, the scanner adapters, policy evaluation, the VSA statement and a human-readable summary.
 - The `ci` interface with a **generic** adapter first (all values from flags or env). It must run on a laptop with `--no-sign`.
 - **Exit:** correct statement and evidence for a passing image and a failing image, run locally, with no CI involved.

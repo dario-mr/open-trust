@@ -1,0 +1,19 @@
+{
+  "syft": {
+    "version": "1.55.0",
+    "image": "anchore/syft@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a"
+  },
+  "trivy": {
+    "version": "0.76.1",
+    "image": "aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c"
+  },
+  "semgrep": {
+    "version": "1.183.0",
+    "image": "semgrep/semgrep@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0",
+    "config": "p/java"
+  },
+  "opa": {
+    "version": "1.22.0",
+    "image": "openpolicyagent/opa@sha256:895872de1e8dc5b82e04f9410d2d1ada2f72d28fdcdba0e8789d91cfc27ec0d0"
+  }
+}
