@@ -199,16 +199,26 @@ Original scope:
   - Distinct exit codes and messages: `INVALID_SIGNATURE`, `UNTRUSTED_SIGNER`, `TRUST_LEVEL_TOO_LOW`, `ARTIFACT_MISMATCH`, `ASSESSMENT_FAILED`, `EVIDENCE_MISMATCH`, `EXPIRED`, `REVOKED`.
 - **Exit:** a key-signed certificate made on a laptop verifies on a different machine, offline.
 
-### Week 4: two real CIs, the demo app and the adversarial suite (Phases 2, 4). GitHub done, GitLab blocked
+### Week 4: two real CIs, the demo app and the adversarial suite (Phases 2, 4). GitHub done, including the isolated assessor; GitLab blocked
 Delivered:
 - `internal/ci`: GitHub Actions detection and OIDC token.
 - `assess --keyless` (Fulcio + Rekor). The token and certificate are fetched *after* the scans, because both are short-lived.
 - `.github/workflows/assess.yml`, a reusable assessor. It builds `otrust` from its own revision, found via the OIDC `job_workflow_ref` claim.
-- `examples/spring-boot-demo` with `demo.yml` (clean and log4j-vulnerable variants), and `ci.yml`.
+- `ci.yml`.
+- The vendor demo in its own repository, **[dario-mr/open-trust-demo](https://github.com/dario-mr/open-trust-demo)**: a Spring Boot app with clean and log4j-vulnerable variants. It calls `assess.yml@63d2abd`, pinned by commit, across the repository boundary.
 
-**Verified on real CI (run 43601753041):**
+**`L1+isolated-assessor`, verified on real CI (open-trust-demo run 43602986686):**
+- The signer is `open-trust/.github/workflows/assess.yml@63d2abd…` and the source is `open-trust-demo@41746d7`, on a GitHub-hosted runner.
+- Following the demo README as a customer, against its `trust.yaml` (which requires `L1+isolated-assessor` and pins the signer commit):
+  - clean: `VERIFIED`, with the evidence re-evaluated;
+  - vulnerable: `ASSESSMENT_FAILED`;
+  - mixed-up image: `ARTIFACT_MISMATCH`.
+
+Found while preparing it: **a vendor `.semgrepignore` could blind SAST.** One `*`, committed at any depth, meant zero files scanned and a vacuous PASS, even with an isolated assessor. `otrust` now blanks every such file for the scan and records them in the certificate. An e2e test covers it, and it fails if the fix is removed.
+
+**Earlier same-repository run (open-trust run 43601753041).** The demo was then in this repository and has since moved out. Results:
 - clean: PASSED and vulnerable: FAILED, both signed keyless at `L1+ci-identity`.
-- Locally, against `examples/spring-boot-demo/trust.yaml` and the public-good trusted root:
+- Locally, against that demo's trust policy and the public-good trusted root:
   - clean: `VERIFIED`, with the evidence re-evaluated;
   - vulnerable: `ASSESSMENT_FAILED`;
   - strict policy: `TRUST_LEVEL_TOO_LOW`;
@@ -219,7 +229,6 @@ Found along the way: Trivy's secret scan was resolving `pom.xml` parents from Ma
 
 **Not done:**
 - **GitLab:** the account's sign-in page is behind a Cloudflare bot check that needs a human.
-- **`L1+isolated-assessor` demo:** it needs a caller in a *different* repository, and the decision was one public repo only. With the caller in this repo, `ci-identity` is the honest level, because the vendor could edit the assessor.
 - **The autogov baseline trial:** it would need a throwaway repo.
 - `release.yml` (signed `otrust` binaries).
 - Signed provenance via `attest-build-provenance`, so the demo's provenance is still WARN.
