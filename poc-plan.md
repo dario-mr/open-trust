@@ -198,7 +198,33 @@ Original scope:
   - Distinct exit codes and messages: `INVALID_SIGNATURE`, `UNTRUSTED_SIGNER`, `TRUST_LEVEL_TOO_LOW`, `ARTIFACT_MISMATCH`, `ASSESSMENT_FAILED`, `EVIDENCE_MISMATCH`, `EXPIRED`, `REVOKED`.
 - **Exit:** a key-signed certificate made on a laptop verifies on a different machine, offline.
 
-### Week 4: two real CIs, the demo app and the adversarial suite (Phases 2, 4)
+### Week 4: two real CIs, the demo app and the adversarial suite (Phases 2, 4). GitHub done, GitLab blocked
+Delivered:
+- `internal/ci`: GitHub Actions detection and OIDC token.
+- `assess --keyless` (Fulcio + Rekor). The token and certificate are fetched *after* the scans, because both are short-lived.
+- `.github/workflows/assess.yml`, a reusable assessor. It builds `otrust` from its own revision, found via the OIDC `job_workflow_ref` claim.
+- `examples/spring-boot-demo` with `demo.yml` (clean and log4j-vulnerable variants), and `ci.yml`.
+
+**Verified on real CI (run 43601753041):**
+- clean: PASSED and vulnerable: FAILED, both signed keyless at `L1+ci-identity`.
+- Locally, against `examples/spring-boot-demo/trust.yaml` and the public-good trusted root:
+  - clean: `VERIFIED`, with the evidence re-evaluated;
+  - vulnerable: `ASSESSMENT_FAILED`;
+  - strict policy: `TRUST_LEVEL_TOO_LOW`;
+  - wrong branch: `UNTRUSTED_SIGNER`;
+  - wrong image: `ARTIFACT_MISMATCH`.
+
+Found along the way: Trivy's secret scan was resolving `pom.xml` parents from Maven Central. That leaked dependency names and hit rate limits. It now runs with `--offline-scan`.
+
+**Not done:**
+- **GitLab:** the account's sign-in page is behind a Cloudflare bot check that needs a human.
+- **`L1+isolated-assessor` demo:** it needs a caller in a *different* repository, and the decision was one public repo only. With the caller in this repo, `ci-identity` is the honest level, because the vendor could edit the assessor.
+- **The autogov baseline trial:** it would need a throwaway repo.
+- `release.yml` (signed `otrust` binaries).
+- Signed provenance via `attest-build-provenance`, so the demo's provenance is still WARN.
+- The adversarial suite in CI (the tamper tests run in `go test`).
+
+Original scope:
 - Day 1, half a day at most: wire autogov's reusable workflows into a throwaway **public** repo (private repos need GHEC for attestations). Note the vendor-side friction: lines of YAML, permissions, secrets, failure modes. This is the reference and baseline for our template.
 - GitHub adapter plus the `ci-templates/github/assess.yml` reusable workflow, giving `L1+isolated-assessor`.
 - GitLab adapter plus `ci-templates/gitlab/`, giving `L1+ci-identity`. Check GitLab's provenance options (D13).
