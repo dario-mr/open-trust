@@ -242,11 +242,13 @@ Found while preparing it: **a vendor `.semgrepignore` could blind SAST.** One `*
 
 Found along the way: Trivy's secret scan was resolving `pom.xml` parents from Maven Central. That leaked dependency names and hit rate limits. It now runs with `--offline-scan`.
 
-**Not done:**
-- **The autogov baseline trial:** it would need a throwaway repo.
-- `release.yml` (signed `otrust` binaries).
-- Signed provenance via `attest-build-provenance`, so the demo's provenance is still WARN.
-- The adversarial suite in CI (the tamper tests run in `go test`).
+**Remaining in Week 4 (re-scoped 2026-11-14):**
+- **Signed provenance:** accept a signed SLSA provenance bundle (GitHub `attest-build-provenance`) instead of unsigned BuildKit provenance, so the provenance check can PASS. GitLab has no signed provenance of its own, so it stays WARN there.
+- *Optional:* real CI attack runs: a self-hosted runner, a wrong workflow ref, an outdated assessor pin. Today the trust-policy tests cover these, and the tamper tests run in `ci` through `go test`.
+
+**Moved or dropped:**
+- `release.yml` (signed `otrust` binaries) moved to week 5. No assessment depends on it, because the assessor builds `otrust` from pinned source. It belongs with distributing trusted agent versions.
+- The autogov baseline trial is dropped. Its purpose was a friction baseline *before* writing our template, and both templates now exist and run. A comparison remains optional research.
 
 Original scope:
 - Day 1, half a day at most: wire autogov's reusable workflows into a throwaway **public** repo (private repos need GHEC for attestations). Note the vendor-side friction: lines of YAML, permissions, secrets, failure modes. This is the reference and baseline for our template.
@@ -258,6 +260,7 @@ Original scope:
 - **Exit:** the same commit assessed on GitHub and on GitLab produces two certificates. The verifier gives both the **same check results** and the **correct, different trust levels**.
 
 ### Week 5: trust files, the demo and feedback (Phases 5, 6)
+- `release.yml`: build `otrust` binaries on tag and sign them (attested provenance). A verifier can then refuse revoked agent versions by digest. Moved from week 4.
 - `trust/revocations.json`, signed and served statically. `verify --online` fetches it, and runs offline without it.
 - Record the demo scenarios (§7). Write one consumer page: what each trust level proves and what it doesn't.
 - **Gate G1 (go/no-go):** apply the technical criteria in open-trust-plan.md §7: differentiation, trust, portability, privacy and adoption effort. The demand criteria (vendor confirmations, a pilot) are **out of scope for this POC**. G1 can only say "technically viable", not "worth building".

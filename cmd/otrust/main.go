@@ -77,6 +77,8 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Repo, "source-repo", "", "source repository URI (default: git remote origin)")
 	fs.StringVar(&o.Revision, "source-revision", "", "source revision (default: git HEAD)")
 	fs.StringVar(&o.Exceptions, "exceptions", "", "exceptions file (default: <source>/.otrust/exceptions.yaml)")
+	fs.StringVar(&o.Provenance, "provenance", "", "signed SLSA provenance bundle for the image (e.g. from actions/attest-build-provenance)")
+	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json to check --provenance (default: fetch via TUF)")
 	noSign := fs.Bool("no-sign", false, "write an unsigned statement only (local testing)")
 	keyPath := fs.String("key", "", "sign with this ECDSA P-256 private key (trust level L1); see `otrust keygen`")
 	keyless := fs.Bool("keyless", false, "sign with the CI's OIDC identity via Sigstore (Fulcio + Rekor)")

@@ -148,3 +148,15 @@ test_structural_requirements_cannot_be_excepted if {
 	d.result == "FAILED"
 	count(d.exceptions_ignored) == 1
 }
+
+test_signed_provenance_from_another_repo_warns if {
+	d := decide(json.patch(clean, [{"op": "replace", "path": "/provenance/signer_trusted", "value": false}]))
+	check_result(d, "provenance") == "WARN"
+	d.result == "PASSED"
+}
+
+test_provenance_for_another_artifact_fails if {
+	d := decide(json.patch(clean, [{"op": "replace", "path": "/provenance/subject_match", "value": false}]))
+	check_result(d, "provenance") == "FAILED"
+	d.result == "FAILED"
+}

@@ -14,9 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sigstore/sigstore-go/pkg/root"
+
 	"github.com/dario-mr/open-trust/internal/adapters"
 	"github.com/dario-mr/open-trust/internal/ci"
 	"github.com/dario-mr/open-trust/internal/policy"
+	"github.com/dario-mr/open-trust/internal/provenance"
 	"github.com/dario-mr/open-trust/internal/signer"
 	"github.com/dario-mr/open-trust/internal/statement"
 	"github.com/dario-mr/open-trust/internal/subject"
@@ -34,6 +37,10 @@ type Options struct {
 	Revision   string
 	Exceptions string        // path; default <source>/.otrust/exceptions.yaml
 	Signer     signer.Signer // nil: unsigned statement only (local testing)
+	// Provenance is a signed SLSA provenance bundle (e.g. GitHub attest-build-provenance); without it,
+	// unsigned BuildKit provenance attached to the image is used if present.
+	Provenance  string
+	TrustedRoot string // Sigstore trusted_root.json for checking Provenance; default: fetch via TUF
 }
 
 // BundleFile is the signed certificate a vendor hands to customers (with the image).
@@ -103,8 +110,12 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 		"sbom.cdx.json": ev.SBOM, "vulns.json": ev.Vulns, "secrets.json": ev.Secrets,
 		"sast.json": ev.SAST, "trivy-db.json": ev.TrivyDB,
 	}
-	if subj.Provenance != nil {
-		files["provenance.json"] = subj.Provenance
+	prov, provBytes, err := checkProvenance(o, subj, env)
+	if err != nil {
+		return nil, err
+	}
+	if provBytes != nil {
+		files["provenance.json"] = provBytes
 	}
 	digests := map[string]string{}
 	for name, b := range files {
@@ -116,14 +127,9 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 
 	now := time.Now().UTC().Truncate(time.Second)
 	pctx := policy.Context{
-		Now:     now.Format(time.RFC3339),
-		Subject: policy.SubjectIn{Digest: subj.Digest, AssessedDigest: subj.Digest},
-		Provenance: policy.Provenance{
-			Present: subj.Provenance != nil,
-			// BuildKit provenance is unsigned and bound to the image only by the index annotation.
-			// shortcut: signed/trusted provenance (GitHub attest-build-provenance bundles) is verified in week 4.
-			SubjectMatch: subj.Provenance != nil,
-		},
+		Now:        now.Format(time.RFC3339),
+		Subject:    policy.SubjectIn{Digest: subj.Digest, AssessedDigest: subj.Digest},
+		Provenance: prov,
 		Exceptions: exceptions,
 	}
 	ctxJSON, err := json.MarshalIndent(pctx, "", "  ")
@@ -239,4 +245,34 @@ func nonNil(s []string) []string {
 		return []string{}
 	}
 	return s
+}
+
+// checkProvenance prefers a signed provenance bundle; otherwise it falls back to the unsigned BuildKit
+// provenance attached to the image, which is bound to it only by the OCI index annotation.
+func checkProvenance(o Options, subj *subject.Subject, env ci.Env) (policy.Provenance, []byte, error) {
+	if o.Provenance == "" {
+		if subj.Provenance == nil {
+			return policy.Provenance{}, nil, nil
+		}
+		return policy.Provenance{Present: true, SubjectMatch: true, Source: "buildkit-unsigned"}, subj.Provenance, nil
+	}
+	b, err := os.ReadFile(o.Provenance)
+	if err != nil {
+		return policy.Provenance{}, nil, err
+	}
+	var tm root.TrustedMaterial
+	if o.TrustedRoot != "" {
+		tm, err = root.NewTrustedRootFromPath(o.TrustedRoot)
+	} else {
+		tm, err = root.FetchTrustedRoot()
+	}
+	if err != nil {
+		return policy.Provenance{}, nil, fmt.Errorf("trusted root for provenance: %w", err)
+	}
+	r, err := provenance.Check(b, subj.Digest, env.Repo, tm)
+	if err != nil {
+		return policy.Provenance{}, nil, fmt.Errorf("provenance %s: %w", o.Provenance, err)
+	}
+	return policy.Provenance{Present: true, Signed: true, SignerTrusted: r.SignerTrusted, SubjectMatch: r.SubjectMatch,
+		Source: "sigstore-bundle", Signer: r.BuildSigner}, b, nil
 }

@@ -22,6 +22,10 @@ on:
         description: File name of the OCI tar inside that artifact
         type: string
         default: image.oci.tar
+      provenance-file:
+        description: Signed SLSA provenance bundle inside that artifact (e.g. from actions/attest-build-provenance); used if present
+        type: string
+        default: provenance.sigstore.json
       subject-name:
         description: Subject name recorded in the certificate
         required: true
@@ -97,11 +101,14 @@ jobs:
         id: assess
         env:
           IMAGE: ${{ runner.temp }}/image/${{ inputs.image-file }}
+          PROVENANCE: ${{ runner.temp }}/image/${{ inputs.provenance-file }}
           SUBJECT_NAME: ${{ inputs.subject-name }}
           SOURCE: .otrust-src/${{ inputs.source-path }}
         run: |
+          prov=()
+          if [ -f "$PROVENANCE" ]; then prov=(--provenance "$PROVENANCE"); fi
           set +e
-          "$RUNNER_TEMP/otrust" assess --keyless --image "$IMAGE" --name "$SUBJECT_NAME" --source "$SOURCE" --out "$RUNNER_TEMP/otrust-out"
+          "$RUNNER_TEMP/otrust" assess --keyless --image "$IMAGE" --name "$SUBJECT_NAME" --source "$SOURCE" --out "$RUNNER_TEMP/otrust-out" "${prov[@]}"
           code=$?
           set -e
           case $code in

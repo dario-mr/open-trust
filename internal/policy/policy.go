@@ -48,6 +48,10 @@ type Provenance struct {
 	Signed        bool `json:"signed"`
 	SignerTrusted bool `json:"signer_trusted"`
 	SubjectMatch  bool `json:"subject_match"`
+	// Source says where the provenance came from ("buildkit-unsigned" | "sigstore-bundle"); Signer
+	// is the verified build signer of a signed bundle. Informational: the policy reads the flags above.
+	Source string `json:"source,omitempty"`
+	Signer string `json:"signer,omitempty"`
 }
 
 // omitempty matters: a nil RawMessage would marshal as null, which Rego treats as present.
