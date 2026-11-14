@@ -243,7 +243,7 @@ Found while preparing it: **a vendor `.semgrepignore` could blind SAST.** One `*
 Found along the way: Trivy's secret scan was resolving `pom.xml` parents from Maven Central. That leaked dependency names and hit rate limits. It now runs with `--offline-scan`.
 
 **Remaining in Week 4 (re-scoped 2026-11-14):**
-- **Signed provenance:** accept a signed SLSA provenance bundle (GitHub `attest-build-provenance`) instead of unsigned BuildKit provenance, so the provenance check can PASS. GitLab has no signed provenance of its own, so it stays WARN there.
+- **Signed provenance: done.** `otrust assess --provenance <bundle>` verifies a Sigstore-bundled SLSA provenance. It checks the signature against the trusted root, that the subject is the image digest, and that the signer is CI of the assessed repository. The GitHub demo attests with `actions/attest-build-provenance`. **Verified (open-trust-demo run 43610582278):** the clean certificate has all six checks PASSED at `L1+isolated-assessor`. GitLab, which has no signed provenance of its own, stays WARN ("provenance is not signed") as designed.
 - *Optional:* real CI attack runs: a self-hosted runner, a wrong workflow ref, an outdated assessor pin. Today the trust-policy tests cover these, and the tamper tests run in `ci` through `go test`.
 
 **Moved or dropped:**
