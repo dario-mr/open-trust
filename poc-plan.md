@@ -151,7 +151,8 @@ Competitive desk research and hands-on testing of autogov: [research/](research/
 
 **G0 decision: pivot, don't abandon.** Build on existing attestation standards. Our product is a CI-agnostic, buyer-facing profile and verifier that states trust levels honestly. This call rests on research only. Demand is unvalidated until week 5.
 
-### Week 1: profile spec and policy (Phase 1)
+### Week 1: profile spec and policy (Phase 1). Done except the second-person check
+Delivered in [profiles/supply-chain-baseline/v1/](profiles/supply-chain-baseline/v1/): profile.md, policy.rego, 17 tests against real tool output. Known gaps are in profile.md §9.
 - `profile.md`: claims, required tools and versions, rules, exceptions, validity, the trust levels from §3, and limitations.
 - `policy.rego` and `policy_test.rego`, plus fixture evidence: one passing set, one failing set per rule, one with an exception.
 - **Exit:** `opa test` passes, and a second person evaluates the fixtures by hand from `profile.md` and reaches the same results.

@@ -1,0 +1,8 @@
+import org.apache.commons.lang3.StringUtils;
+
+public class Main {
+    public static void main(String[] args) {
+        String name = args.length > 0 ? args[0] : "world";
+        System.out.println("Hello, " + StringUtils.capitalize(name));
+    }
+}
