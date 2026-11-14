@@ -199,7 +199,7 @@ Original scope:
   - Distinct exit codes and messages: `INVALID_SIGNATURE`, `UNTRUSTED_SIGNER`, `TRUST_LEVEL_TOO_LOW`, `ARTIFACT_MISMATCH`, `ASSESSMENT_FAILED`, `EVIDENCE_MISMATCH`, `EXPIRED`, `REVOKED`.
 - **Exit:** a key-signed certificate made on a laptop verifies on a different machine, offline.
 
-### Week 4: two real CIs, the demo app and the adversarial suite (Phases 2, 4). GitHub done, including the isolated assessor; GitLab blocked
+### Week 4: two real CIs, the demo app and the adversarial suite (Phases 2, 4). Done on both CIs (GitHub incl. the isolated assessor; GitLab at ci-identity)
 Delivered:
 - `internal/ci`: GitHub Actions detection and OIDC token.
 - `assess --keyless` (Fulcio + Rekor). The token and certificate are fetched *after* the scans, because both are short-lived.
@@ -213,6 +213,21 @@ Delivered:
   - clean: `VERIFIED`, with the evidence re-evaluated;
   - vulnerable: `ASSESSMENT_FAILED`;
   - mixed-up image: `ARTIFACT_MISMATCH`.
+
+**GitLab, verified on real CI ([gitlab.com/dario-mr/open-trust-demo](https://gitlab.com/dario-mr/open-trust-demo) pipeline 3068491156).** The same demo source runs through `ci-templates/gitlab/otrust.gitlab-ci.yml`, pinned to commit `24e872e`, with Docker-in-Docker and keyless signing on GitLab's OIDC identity. Results:
+- clean: PASSED and vulnerable: FAILED, signed at `L1+ci-identity`. The signer is the project's own `//.gitlab-ci.yml@refs/heads/main`, on a hosted runner.
+- Locally, against the demo's `trust-gitlab.yaml`:
+  - clean: `VERIFIED`, with the evidence re-evaluated;
+  - vulnerable: `ASSESSMENT_FAILED`;
+  - a policy demanding an isolated assessor: `TRUST_LEVEL_TOO_LOW`;
+  - the GitHub trust policy applied to the GitLab certificate: `UNTRUSTED_SIGNER`.
+
+**Portability exit met:** the same commit and the same check results on both CIs, with different and correct trust levels.
+
+GitLab lessons:
+- buildx needs a Docker context, not TLS environment variables;
+- the image and the evidence must live under `$CI_PROJECT_DIR`, because Docker-in-Docker sees only `/builds`, so the scanners now skip non-source paths inside the source tree;
+- "instance runners disabled" on a brand-new namespace did not block shared runners.
 
 Found while preparing it: **a vendor `.semgrepignore` could blind SAST.** One `*`, committed at any depth, meant zero files scanned and a vacuous PASS, even with an isolated assessor. `otrust` now blanks every such file for the scan and records them in the certificate. An e2e test covers it, and it fails if the fix is removed.
 
@@ -228,7 +243,6 @@ Found while preparing it: **a vendor `.semgrepignore` could blind SAST.** One `*
 Found along the way: Trivy's secret scan was resolving `pom.xml` parents from Maven Central. That leaked dependency names and hit rate limits. It now runs with `--offline-scan`.
 
 **Not done:**
-- **GitLab:** the account's sign-in page is behind a Cloudflare bot check that needs a human.
 - **The autogov baseline trial:** it would need a throwaway repo.
 - `release.yml` (signed `otrust` binaries).
 - Signed provenance via `attest-build-provenance`, so the demo's provenance is still WARN.
