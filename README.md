@@ -18,7 +18,7 @@ The vendor side lives in a separate repository, **[dario-mr/open-trust-demo](htt
 |---|---|
 | Key-signed (`L1`), any CI | `otrust keygen --out vendor` then `otrust assess --key vendor.key --image img.oci.tar --source .` |
 | Keyless (`L1+ci-identity`), GitHub Actions, GitLab CI (`ci-templates/gitlab/otrust.gitlab-ci.yml`), or any CI exposing `SIGSTORE_ID_TOKEN` | `otrust assess --keyless --image img.oci.tar --source .` |
-| Reusable workflow (GitHub), `L1+isolated-assessor` when called from another repository | `uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>` (see the header of [assess.yml](.github/workflows/assess.yml)) |
+| Reusable workflow (GitHub), `L1+isolated-assessor` when called from another repository | `uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>` with `image-ref: ghcr.io/acme/svc@sha256:…` or an image artifact (see the header of [assess.yml](.github/workflows/assess.yml)) |
 | Customer | `otrust verify cert.sigstore.json --image img.oci.tar --trust-policy trust.yaml [--trusted-root root.json] [--evidence dir] [--revocations file] [--online]` |
 
 `--image` takes an OCI layout (directory or tar) or a registry reference pinned by digest (`ghcr.io/acme/svc@sha256:…`). A tag is refused, because it can move. Registry credentials come from the Docker config. Verifying by reference pulls the image, so for fully offline verification pass a local layout.

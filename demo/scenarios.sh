@@ -52,10 +52,12 @@ gh api "repos/$DEMO/contents/trust.yaml?ref=$(gh run view "$OLD_RUN" -R $DEMO --
 grep -q "$OLD_ASSESSOR" old/trust.yaml || { echo "old trust policy does not pin $OLD_ASSESSOR"; exit 2; }
 v() { "$otrust" verify "$@" --trusted-root "$root"; }
 
-scenario "1a. Clean pass on GitHub: the isolated assessor" VERIFIED \
-	v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --evidence gh/otrust-image-clean
-scenario "1b. The same app on GitLab: the vendor's own pipeline signs, so only ci-identity" VERIFIED \
-	v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
+# a buyer pulls the image they deploy from the vendor's registry, pinned by digest
+subj() { jq -r '.dsseEnvelope.payload|@base64d|fromjson|"sha256:"+.subject[0].digest.sha256' "$1"; }
+scenario "1a. Clean pass on GitHub: the isolated assessor (image pulled from ghcr.io by digest)" VERIFIED \
+	v gh/otrust-image-clean/certificate.sigstore.json --image "ghcr.io/$DEMO@$(subj gh/otrust-image-clean/certificate.sigstore.json)" --trust-policy trust.yaml --evidence gh/otrust-image-clean
+scenario "1b. The same app on GitLab: the vendor's own pipeline signs, so only ci-identity (image from the GitLab registry)" VERIFIED \
+	v gl/otrust-out/certificate.sigstore.json --image "registry.gitlab.com/$DEMO@$(subj gl/otrust-out/certificate.sigstore.json)" --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
 sed 's/^minTrustLevel: .*/minTrustLevel: L1+isolated-assessor/' trust-gitlab.yaml > trust-gitlab-strict.yaml
 scenario "1c. A buyer who demands the isolated assessor rejects the GitLab certificate" TRUST_LEVEL_TOO_LOW \
 	v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab-strict.yaml
