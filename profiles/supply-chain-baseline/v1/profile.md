@@ -17,7 +17,7 @@ For the exact artifact digest in the certificate subject:
 3. The source revision was scanned for exposed secrets, and none were found, except those listed as exceptions.
 4. The source was scanned with static analysis, and no ERROR-severity findings remain, except those listed as exceptions.
 5. Build provenance exists for the artifact, and its subject matches the artifact.
-6. The artifact digest that was assessed is the digest the certificate is about.
+6. The artifact digest that was assessed is the digest the certificate is about. It is the image manifest digest, whether the image came from an OCI layout or from a registry by digest.
 7. All of the above used the tool versions and this policy version, as recorded in the certificate. The SAST ruleset is the registry's current one, recorded by digest (§9).
 
 The certificate always lists warnings, exceptions and unmet requirements. A PASSED result never hides them.
@@ -132,4 +132,4 @@ Found while generating the fixtures:
 - **Trivy's JSON output does not record the vulnerability DB version.** `otrust` captures it separately with `trivy version --format json`. It stores the result as evidence (`trivy-db.json`) and in the certificate (`tools.trivy.db`).
 - **BuildKit provenance** (`--provenance=mode=min`) is SLSA v0.2, unsigned, and has an empty `subject`. It is bound to the image only by the OCI index annotation `vnd.docker.reference.digest`. `otrust` accepts it as present, so the provenance check gives WARN (unsigned). A signed bundle passed with `--provenance` (e.g. GitHub `attest-build-provenance`) replaces it. The check then PASSES when the bundle is signed by CI of the assessed repository and names the image digest. It WARNs when the signer is another repository, and FAILs when the bundle names another artifact. A bundle that does not verify stops the assessment.
 - Semgrep and Trivy report paths as the scanner saw them (container paths). Exception keys use those paths.
-- Subject digests are only stable when builds are reproducible. The fixtures use `SOURCE_DATE_EPOCH=0` and `rewrite-timestamp=true`, and checksum-pinned `ADD`, and rebuilds give identical manifest digests. Vendor builds may not be reproducible. That is fine, because the certificate binds to whatever digest was built, but "rebuild and compare" is not available to buyers.
+- Subject digests are only stable when builds are reproducible. The fixtures use `SOURCE_DATE_EPOCH=0` and `rewrite-timestamp=true`, and checksum-pinned `ADD`, and rebuilds give identical manifest digests. Vendor builds may not be reproducible. That is fine, because the certificate binds to whatever digest was built, but "rebuild and compare" is not available to buyers. An exported OCI layout and the image pushed to a registry can also differ, depending on the build tool. Assessing the registry reference (`name@sha256:…`) binds the certificate to exactly what buyers pull.

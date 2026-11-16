@@ -56,7 +56,7 @@ var ExitCodes = map[Code]int{
 
 type Options struct {
 	Bundle      string
-	Image       string // OCI layout the customer received
+	Image       string // OCI layout the customer received, or a registry reference pinned by digest
 	TrustPolicy string // required: who the customer trusts
 	Evidence    string // optional: evidence dir shared by the vendor
 	TrustedRoot string // Sigstore trusted_root.json; required for certificate-signed bundles
@@ -203,7 +203,20 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	}
 
 	// 3. artifact binding
-	img, err := subject.Resolve(o.Image)
+	layoutPath := o.Image
+	if subject.IsRef(o.Image) {
+		// the only other network access besides --online; a local layout keeps verify offline
+		dir, err := os.MkdirTemp("", "otrust-verify-image-")
+		if err != nil {
+			return nil, err
+		}
+		defer os.RemoveAll(dir)
+		if err := subject.Pull(ctx, o.Image, dir); err != nil {
+			return r.fail(ArtifactMismatch, "image: %v", err), nil
+		}
+		layoutPath = dir
+	}
+	img, err := subject.Resolve(layoutPath)
 	if err != nil {
 		return r.fail(ArtifactMismatch, "image: %v", err), nil
 	}

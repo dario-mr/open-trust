@@ -70,7 +70,7 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs := flag.NewFlagSet("assess", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var o assess.Options
-	fs.StringVar(&o.Image, "image", "", "OCI image layout (directory or tar) to assess (required)")
+	fs.StringVar(&o.Image, "image", "", "image to assess (required): an OCI layout (directory or tar), or a registry reference name@sha256:…")
 	fs.StringVar(&o.Name, "name", "", "subject name recorded in the certificate, e.g. registry.example.com/acme/svc")
 	fs.StringVar(&o.SourceDir, "source", ".", "source tree at the assessed revision (secrets + SAST)")
 	fs.StringVar(&o.OutDir, "out", "otrust-out", "directory for evidence and statement.json")
@@ -171,7 +171,7 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs := flag.NewFlagSet("verify", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var o verify.Options
-	fs.StringVar(&o.Image, "image", "", "the OCI image layout (directory or tar) you received (required)")
+	fs.StringVar(&o.Image, "image", "", "the image you received (required): an OCI layout (directory or tar), or name@sha256:… pulled from its registry")
 	fs.StringVar(&o.TrustPolicy, "trust-policy", "", "trust.yaml listing the signers you accept (required)")
 	fs.StringVar(&o.Evidence, "evidence", "", "evidence directory shared by the vendor: re-checks digests and re-runs the policy")
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (needed for keyless/CI-signed certificates)")

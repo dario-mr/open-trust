@@ -52,26 +52,40 @@ func (l *layout) writeTar() string {
 	return p
 }
 
+func (l *layout) size(d string) int {
+	return len(l.files["blobs/sha256/"+strings.TrimPrefix(d, "sha256:")])
+}
+
+// d is a complete descriptor (registries need mediaType and size, not only the digest).
+func (l *layout) d(mt, digest string, extra map[string]any) map[string]any {
+	m := map[string]any{"mediaType": mt, "digest": digest, "size": l.size(digest)}
+	for k, v := range extra {
+		m[k] = v
+	}
+	return m
+}
+
 // buildkitLike mirrors what `buildx --output type=oci --provenance=mode=min` produced in practice.
 func buildkitLike(t *testing.T) (*layout, string) {
 	l := &layout{t: t, files: map[string][]byte{}}
-	cfg := l.blob([]byte(`{"architecture":"arm64","os":"linux"}`))
+	cfg := l.blob([]byte(`{"architecture":"arm64","os":"linux","rootfs":{"type":"layers","diff_ids":[]}}`))
 	layer := l.blob([]byte("pretend this is a gzipped layer"))
-	img := l.blob(map[string]any{"schemaVersion": 2,
-		"config": map[string]any{"mediaType": "application/vnd.oci.image.config.v1+json", "digest": cfg},
-		"layers": []any{map[string]any{"mediaType": "application/vnd.oci.image.layer.v1.tar+gzip", "digest": layer}},
+	img := l.blob(map[string]any{"schemaVersion": 2, "mediaType": mtManifest,
+		"config": l.d("application/vnd.oci.image.config.v1+json", cfg, nil),
+		"layers": []any{l.d("application/vnd.oci.image.layer.v1.tar+gzip", layer, nil)},
 	})
 	prov := l.blob([]byte(`{"_type":"https://in-toto.io/Statement/v0.1","predicateType":"https://slsa.dev/provenance/v0.2","subject":[]}`))
-	att := l.blob(map[string]any{"layers": []any{map[string]any{
-		"mediaType": mtInToto, "digest": prov,
-		"annotations": map[string]string{annPredicate: "https://slsa.dev/provenance/v0.2"},
-	}}})
-	inner := l.blob(map[string]any{"mediaType": mtIndex, "manifests": []any{
-		map[string]any{"mediaType": mtManifest, "digest": img, "platform": map[string]string{"os": "linux", "architecture": "arm64"}},
-		map[string]any{"mediaType": mtManifest, "digest": att, "annotations": map[string]string{annRefType: "attestation-manifest", annRefDigest: img}},
+	attCfg := l.blob([]byte(`{"architecture":"unknown","os":"unknown","rootfs":{"type":"layers","diff_ids":[]}}`))
+	att := l.blob(map[string]any{"schemaVersion": 2, "mediaType": mtManifest,
+		"config": l.d("application/vnd.oci.image.config.v1+json", attCfg, nil),
+		"layers": []any{l.d(mtInToto, prov, map[string]any{"annotations": map[string]string{annPredicate: "https://slsa.dev/provenance/v0.2"}})},
+	})
+	inner := l.blob(map[string]any{"schemaVersion": 2, "mediaType": mtIndex, "manifests": []any{
+		l.d(mtManifest, img, map[string]any{"platform": map[string]string{"os": "linux", "architecture": "arm64"}}),
+		l.d(mtManifest, att, map[string]any{"annotations": map[string]string{annRefType: "attestation-manifest", annRefDigest: img}}),
 	}})
-	l.files["index.json"], _ = json.Marshal(map[string]any{"mediaType": mtIndex, "manifests": []any{
-		map[string]any{"mediaType": mtIndex, "digest": inner},
+	l.files["index.json"], _ = json.Marshal(map[string]any{"schemaVersion": 2, "mediaType": mtIndex, "manifests": []any{
+		l.d(mtIndex, inner, nil),
 	}})
 	return l, img
 }
@@ -125,8 +139,8 @@ func TestResolveRejectsEveryTamperedBlob(t *testing.T) {
 			}
 		}
 	}
-	if n != 6 { // config, layer, image manifest, provenance, attestation manifest, inner index
-		t.Fatalf("expected 6 blobs, got %d", n)
+	if n != 7 { // config, layer, image manifest, provenance, attestation config + manifest, inner index
+		t.Fatalf("expected 7 blobs, got %d", n)
 	}
 }
 

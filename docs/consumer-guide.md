@@ -10,7 +10,7 @@ It does **not** say the software is secure. The scanners find *known* vulnerabil
 
 ## Check it
 
-You need the artifact (an OCI image), the certificate (`certificate.sigstore.json`) and **your own** trust policy. The trust policy is your decision about whose certificates you accept. There is no default.
+You need the artifact (an OCI image, as a file or as a registry reference pinned by digest, `registry/name@sha256:…`), the certificate (`certificate.sigstore.json`) and **your own** trust policy. The trust policy is your decision about whose certificates you accept. There is no default.
 
 ```bash
 otrust verify certificate.sigstore.json --image image.oci.tar --trust-policy trust.yaml \
@@ -19,7 +19,7 @@ otrust verify certificate.sigstore.json --image image.oci.tar --trust-policy tru
   [--evidence otrust-out/]            # if the vendor shares the raw evidence
 ```
 
-Verification needs no network. `--online` adds the one network call, which fetches the signed revocation list. `--evidence` re-checks the vendor's raw scan output against the certificate and re-runs the policy, which catches a summary that does not match its evidence.
+Verification needs no network when you pass the image as a file. A registry reference pulls it first, and the certificate must name that image (a different digest gives `ARTIFACT_MISMATCH`). `--online` adds the one other network call, which fetches the signed revocation list. `--evidence` re-checks the vendor's raw scan output against the certificate and re-runs the policy, which catches a summary that does not match its evidence.
 
 A sample `trust.yaml` that accepts only the Open Trust assessor at a pinned version, assessing one vendor repository on a GitHub-hosted runner:
 

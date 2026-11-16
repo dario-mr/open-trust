@@ -4,9 +4,17 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/registry"
+	ocilayout "github.com/google/go-containerregistry/pkg/v1/layout"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 
 	"github.com/dario-mr/open-trust/internal/adapters"
 	"github.com/dario-mr/open-trust/internal/statement"
@@ -160,5 +168,49 @@ func TestE2EVendorSemgrepignoreIsNeutralized(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(r.OutDir, ".otrust-semgrep-rules.yaml")); !os.IsNotExist(err) {
 		t.Fatalf("ruleset file left in the evidence dir: %v", err)
+	}
+}
+
+// An image pulled from a registry by digest is assessed exactly like its OCI tar: same subject,
+// same result, and the pulled copy does not stay in the evidence dir.
+func TestE2ERegistryReference(t *testing.T) {
+	e2e(t)
+	srv := httptest.NewServer(registry.New())
+	defer srv.Close()
+	dir := t.TempDir()
+	if err := exec.Command("tar", "-xf", filepath.Join(fx, "build", "clean.oci.tar"), "-C", dir).Run(); err != nil {
+		t.Fatal(err)
+	}
+	ii, err := ocilayout.ImageIndexFromPath(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, _ := ii.IndexManifest()
+	inner, err := ii.ImageIndex(m.Manifests[0].Digest) // buildx --push pushes this BuildKit index
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := strings.TrimPrefix(srv.URL, "http://") + "/fixture/clean"
+	tag, _ := name.NewTag(repo + ":e2e")
+	if err := remote.WriteIndex(tag, inner); err != nil {
+		t.Fatal(err)
+	}
+	d, _ := inner.Digest()
+
+	out := outDir(t, "registry")
+	r, err := Run(context.Background(), Options{Image: repo + "@" + d.String(),
+		SourceDir: filepath.Join(fx, "src", "clean", "app"), OutDir: out, Revision: "e2e"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromTar := assessFixture(t, "clean", outDir(t, "registry-tar"), "")
+	if r.Subject.Digest != fromTar.Subject.Digest || r.Decision.Result != "PASSED" {
+		t.Fatalf("registry: %s %s; tar: %s", r.Subject.Digest, r.Decision.Result, fromTar.Subject.Digest)
+	}
+	if got := r.Statement.Subject[0].Name; got != repo {
+		t.Fatalf("subject name = %q, want the repository %q", got, repo)
+	}
+	if _, err := os.Stat(filepath.Join(out, ".otrust-image")); !os.IsNotExist(err) {
+		t.Fatalf("pulled image left in the evidence dir: %v", err)
 	}
 }

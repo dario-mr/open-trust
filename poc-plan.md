@@ -324,7 +324,7 @@ Scenarios to show:
 - **Private repositories and public Rekor.** Keyless signing through public Sigstore publishes the repo and pipeline identity in Rekor, on every CI. The options are a private Fulcio and Rekor, or KMS-based `L1`. Whether vendors care is unvalidated.
 - **GitLab provenance.** It may be unsigned (D13), which would make the provenance check WARN-only on GitLab.
 - **Semgrep on Java.** The free rules may be noisy. If so, the SAST check is WARN-only in v1. The ruleset is recorded by digest, not pinned (§9).
-- **Digest stability.** Test early that the OCI-layout digest equals the registry digest, across buildx, kaniko and buildah.
+- **Digest stability.** An exported OCI layout and a pushed image may differ depending on the build tool. Settled by assessing the registry reference itself (§9 step 3): the certificate binds the digest buyers pull.
 - **Demand.** This POC doesn't validate demand at all. A technical go at G1 still leaves the main business risk open.
 
 ---
@@ -341,7 +341,7 @@ Next steps, in order:
 |---|---|---|---|
 | 1 | ~~Release v0.1.2 and re-pin the demo~~ **Done.** The v0.1.2 release, the GitHub assessor and the GitLab template all give `agentDigest` `3ba9dd14…`. Both certificates record ruleset `800b43b6…`, and the demo re-ran 12/12. | Live certificates carry the recorded ruleset | Small |
 | 2 | **Demand validation**: show [docs/consumer-guide.md](docs/consumer-guide.md) and [demo/RESULTS.txt](demo/RESULTS.txt) to 3–5 buyer-side security or procurement people and 2–3 vendors. Ask whether `L1+ci-identity` is worth anything to them, or only isolation. | The main open risk. It decides whether steps 3–6 are worth doing. | Not engineering |
-| 3 | **Registry image references**: `--image registry/name@sha256:…` for assess and verify, instead of an OCI tar | The biggest adoption hurdle. Teams push to registries, and buyers pull from them. Also settles "OCI layout digest = registry digest" (§8). | Medium |
+| 3 | ~~Registry image references~~ **Done in the CLI.** `--image registry/name@sha256:…` works for assess and verify. Tags are refused, credentials come from the Docker config, and the pulled copy is not kept. An index digest keeps BuildKit provenance. Tested against an in-process registry, including with the real scanners. *Still open:* an `image-ref` input in `assess.yml` and the GitLab template, plus registry login there; and the demo pushing to a registry. | The biggest adoption hurdle. Teams push to registries, and buyers pull from them. | Medium |
 | 4 | **Private repositories**: document the key-signed (`L1`) path for vendors who can't publish their identity in Rekor, ideally with a KMS-held key | Keyless signing puts the repository name in the public log | Small (docs). A private Fulcio/Rekor is large and deferred. |
 | 5 | **Live CI attack runs**: a self-hosted runner, a wrong workflow ref and an outdated assessor pin, run on real CI | Today these rows of the §6 matrix rest on unit tests and reasoning | Small–medium |
 | 6 | **Maintenance hygiene**: update scanner pins on a schedule, and keep the weekly revocation re-signing alive (GitHub disables schedules after 60 days without activity) | A certificate is only as current as its tools | Small, recurring |

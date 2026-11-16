@@ -138,6 +138,11 @@ func Resolve(path string) (*Subject, error) {
 		if err := json.Unmarshal(mraw, &m); err != nil {
 			return nil, fmt.Errorf("attestation manifest %s: %w", a.Digest, err)
 		}
+		if m.Config.Digest != "" {
+			if err := verifyBlob(open, m.Config.Digest); err != nil {
+				return nil, err
+			}
+		}
 		for _, l := range m.Layers {
 			pt := l.Annotations[annPredicate]
 			if l.MediaType == mtInToto && strings.HasPrefix(pt, "https://slsa.dev/provenance/") {

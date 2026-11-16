@@ -41,14 +41,14 @@ func writeBlob(t *testing.T, dir string, b []byte) string {
 
 func writeImage(t *testing.T, content string) (dir, digest string) {
 	dir = t.TempDir()
-	cfg := writeBlob(t, dir, []byte(`{"os":"linux"}`))
-	layer := writeBlob(t, dir, []byte(content))
-	m, _ := json.Marshal(map[string]any{"schemaVersion": 2,
-		"config": map[string]string{"mediaType": "application/vnd.oci.image.config.v1+json", "digest": cfg},
-		"layers": []any{map[string]string{"mediaType": "application/vnd.oci.image.layer.v1.tar", "digest": layer}}})
+	cfgB, layerB := []byte(`{"os":"linux","rootfs":{"type":"layers","diff_ids":[]}}`), []byte(content)
+	cfg, layer := writeBlob(t, dir, cfgB), writeBlob(t, dir, layerB)
+	m, _ := json.Marshal(map[string]any{"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json",
+		"config": map[string]any{"mediaType": "application/vnd.oci.image.config.v1+json", "digest": cfg, "size": len(cfgB)},
+		"layers": []any{map[string]any{"mediaType": "application/vnd.oci.image.layer.v1.tar", "digest": layer, "size": len(layerB)}}})
 	digest = writeBlob(t, dir, m)
 	idx, _ := json.Marshal(map[string]any{"schemaVersion": 2, "manifests": []any{
-		map[string]string{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": digest}}})
+		map[string]any{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": digest, "size": len(m)}}})
 	os.WriteFile(filepath.Join(dir, "index.json"), idx, 0o644)
 	return dir, digest
 }

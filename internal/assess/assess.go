@@ -64,11 +64,23 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	img, err := filepath.Abs(o.Image)
-	if err != nil {
+	if err := os.MkdirAll(out, 0o755); err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(out, 0o755); err != nil {
+	name := o.Name
+	img := o.Image
+	if subject.IsRef(o.Image) {
+		// pulled into the out dir (the scanners' containers must see it) and removed afterwards
+		img = filepath.Join(out, ".otrust-image")
+		os.RemoveAll(img)
+		defer os.RemoveAll(img)
+		if err := subject.Pull(ctx, o.Image, img); err != nil {
+			return nil, fmt.Errorf("subject: %w", err)
+		}
+		if name == "" {
+			name = strings.SplitN(o.Image, "@", 2)[0]
+		}
+	} else if img, err = filepath.Abs(o.Image); err != nil {
 		return nil, err
 	}
 
@@ -162,7 +174,7 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	var trivyDB any
 	_ = json.Unmarshal(ev.TrivyDB, &trivyDB)
 	st := statement.Build(statement.Params{
-		SubjectName:   nameOr(o.Name, img),
+		SubjectName:   nameOr(name, img),
 		SubjectDigest: subj.Digest,
 		AgentVersion:  Version,
 		AgentDigest:   agent,
