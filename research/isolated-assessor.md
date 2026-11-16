@@ -1,5 +1,7 @@
 # Research: an isolated assessor outside GitHub
 
+> **Decision (2026-11-16): option 1, honest levels.** Outside GitHub, certificates stay at `L1+ci-identity` or `L1`, clearly labelled. That gives accountability through the public signature log, not prevention. The remote assessor (C) is **dropped**: it makes vendors on other CIs depend on GitHub or on a service we run, and the system must be self-contained. The TEE (D) is **shelved** until buyers say only isolation is acceptable. A buyer-side re-check of the image-based checks (SBOM, vulnerabilities) remains a candidate. It needs no trust in the vendor on any CI.
+
 **Question.** `L1+isolated-assessor` means the vendor could not change the assessment. Today it exists only on GitHub Actions, where Fulcio's *Build Signer URI* names our reusable workflow separately from the caller (poc-plan.md §3). Can we offer the same guarantee to vendors on other CIs?
 
 **Short answer.** No CI other than GitHub can do it natively today, and none is about to. Two designs give isolation without depending on the vendor's CI:
