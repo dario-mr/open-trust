@@ -4,6 +4,8 @@
 
 `otrust` runs in the vendor's CI. It scans an OCI image and its source with pinned tools (Syft, Trivy, Semgrep), evaluates a versioned policy ([Supply-Chain Baseline v1](profiles/supply-chain-baseline/v1/profile.md)), and signs the result as a Sigstore bundle. The bundle carries an in-toto statement with a SLSA VSA predicate. The evidence stays with the vendor; the certificate holds only its digests.
 
+> **Buyers:** start with the [consumer guide](docs/consumer-guide.md). The POC result is in [research/g1-go-no-go.md](research/g1-go-no-go.md), and a recorded buyer-side demo is in [demo/RESULTS.txt](demo/RESULTS.txt).
+
 > Proof of concept. It proves what was checked, not that software is secure, and it is vendor-attested: see the trust levels in [poc-plan.md](poc-plan.md) §3 and the limitations listed in every certificate.
 
 ## Verify the demo yourself
