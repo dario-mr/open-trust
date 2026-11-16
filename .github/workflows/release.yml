@@ -1,6 +1,7 @@
 # Release otrust: build the binaries on a version tag, attest their build provenance (Sigstore,
 # keyless) and publish them. The build command is the one the assessors use (assess.yml, the GitLab
 # template), so the linux/amd64 digest a certificate records as agentDigest is the released binary's.
+# -buildvcs=false: otherwise a tag in the checkout changes the stamped module version, and the digest.
 # workflow_dispatch builds and attests without publishing a release.
 name: release
 
@@ -31,7 +32,7 @@ jobs:
           set -euo pipefail
           mkdir dist
           for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-            CGO_ENABLED=0 GOOS=${t%/*} GOARCH=${t#*/} go build -trimpath -o "dist/otrust-${t%/*}-${t#*/}" ./cmd/otrust
+            CGO_ENABLED=0 GOOS=${t%/*} GOARCH=${t#*/} go build -trimpath -buildvcs=false -o "dist/otrust-${t%/*}-${t#*/}" ./cmd/otrust
           done
           (cd dist && sha256sum otrust-* > SHA256SUMS && cat SHA256SUMS)
       - name: Check the version matches the tag
