@@ -1,5 +1,5 @@
 {
-  "now": "2026-11-14T12:18:22Z",
+  "now": "2026-11-16T20:21:49Z",
   "subject": {
     "digest": "sha256:481856dad62179cc5bd32eb91d4fd0ca4d66c825ccfd9fd3c7da62e307255cdf",
     "assessed_digest": "sha256:481856dad62179cc5bd32eb91d4fd0ca4d66c825ccfd9fd3c7da62e307255cdf"
@@ -15,17 +15,17 @@
       "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
       "bomFormat": "CycloneDX",
       "specVersion": "1.7",
-      "serialNumber": "urn:uuid:2ae947c9-b33d-42e1-87e4-6b27458c812f",
+      "serialNumber": "urn:uuid:3957ed59-6c87-4d52-bc1f-92fce98c80a4",
       "version": 1,
       "metadata": {
-        "timestamp": "2026-11-14T12:18:24Z",
+        "timestamp": "2026-11-16T20:21:55Z",
         "tools": {
           "components": [
             {
               "type": "application",
               "author": "anchore",
               "name": "syft",
-              "version": "1.55.0"
+              "version": "1.56.0"
             }
           ]
         },
@@ -137,8 +137,8 @@
       "Trivy": {
         "Version": "0.76.1"
       },
-      "ReportID": "01a1d9fe-9dbc-76de-aaec-9f689755f340",
-      "CreatedAt": "2026-11-14T12:18:24.828451314Z",
+      "ReportID": "01a1e606-00a6-7b43-b027-629c2cb24538",
+      "CreatedAt": "2026-11-16T20:21:55.494738887Z",
       "ArtifactName": "/fx/build/clean/sbom.cdx.json",
       "ArtifactType": "cyclonedx",
       "Results": [
@@ -169,8 +169,8 @@
       "Trivy": {
         "Version": "0.76.1"
       },
-      "ReportID": "01a1d9fe-9ee5-76d5-801c-6bd9c6f7d731",
-      "CreatedAt": "2026-11-14T12:18:25.125449329Z",
+      "ReportID": "01a1e606-0198-7f0c-822d-a12d19d4c126",
+      "CreatedAt": "2026-11-16T20:21:55.736987027Z",
       "ArtifactName": "/fx/src/clean/app",
       "ArtifactType": "filesystem"
     },
@@ -185,18 +185,18 @@
       },
       "time": {
         "rules": [],
-        "rules_parse_time": 0.035977840423583984,
+        "rules_parse_time": 0.07881402969360352,
         "profiling_times": {
-          "config_time": 0.25075507164001465,
-          "core_time": 0.38980746269226074,
-          "ignores_time": 0.00012946128845214844,
-          "total_time": 0.6489279270172119
+          "config_time": 0.7402780055999756,
+          "core_time": 0.3098452091217041,
+          "ignores_time": 0.00010609626770019531,
+          "total_time": 1.0585074424743652
         },
         "parsing_time": {
-          "total_time": 0.011092901229858398,
+          "total_time": 0.008889198303222656,
           "per_file_time": {
-            "mean": 0.0022185802459716796,
-            "std_dev": 0.00001968416198906198
+            "mean": 0.0017778396606445313,
+            "std_dev": 0.000012642855435842647
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -205,9 +205,9 @@
           "very_slow_files": []
         },
         "scanning_time": {
-          "total_time": 0.01828312873840332,
+          "total_time": 0.013632059097290039,
           "per_file_time": {
-            "mean": 0.01828312873840332,
+            "mean": 0.013632059097290039,
             "std_dev": 0.0
           },
           "very_slow_stats": {
@@ -217,10 +217,10 @@
           "very_slow_files": []
         },
         "matching_time": {
-          "total_time": 0.004465818405151367,
+          "total_time": 0.0023360252380371094,
           "per_file_and_rule_time": {
-            "mean": 0.0008931636810302734,
-            "std_dev": 0.000001745020708767697
+            "mean": 0.00046720504760742185,
+            "std_dev": 4.969517613062635E-7
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -229,10 +229,10 @@
           "very_slow_rules_on_files": []
         },
         "tainting_time": {
-          "total_time": 0.0004968643188476562,
+          "total_time": 0.0004932880401611328,
           "per_def_and_rule_time": {
-            "mean": 0.00004140535990397135,
-            "std_dev": 4.9055049405271545E-9
+            "mean": 0.0000411073366800944,
+            "std_dev": 6.972304412834597E-9
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -251,7 +251,7 @@
         },
         "targets": [],
         "total_bytes": 0,
-        "max_memory_bytes": 125875264
+        "max_memory_bytes": 125613120
       },
       "engine_requested": "OSS",
       "skipped_rules": [],

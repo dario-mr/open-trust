@@ -1,5 +1,5 @@
 {
-  "now": "2026-11-14T12:18:22Z",
+  "now": "2026-11-16T20:21:49Z",
   "subject": {
     "digest": "sha256:f0df5c581c9c411a5bf376c7f5d82534b07d4072da975bf2f0c2f552caf2be07",
     "assessed_digest": "sha256:f0df5c581c9c411a5bf376c7f5d82534b07d4072da975bf2f0c2f552caf2be07"
@@ -15,17 +15,17 @@
       "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
       "bomFormat": "CycloneDX",
       "specVersion": "1.7",
-      "serialNumber": "urn:uuid:9854ebac-c376-40e0-9722-dba1ec3d005c",
+      "serialNumber": "urn:uuid:f8e21ac0-5467-4e2f-913a-5ecb19a31ffb",
       "version": 1,
       "metadata": {
-        "timestamp": "2026-11-14T12:18:29Z",
+        "timestamp": "2026-11-16T20:22:00Z",
         "tools": {
           "components": [
             {
               "type": "application",
               "author": "anchore",
               "name": "syft",
-              "version": "1.55.0"
+              "version": "1.56.0"
             }
           ]
         },
@@ -137,8 +137,8 @@
       "Trivy": {
         "Version": "0.76.1"
       },
-      "ReportID": "01a1d9fe-af76-7adf-800a-40f312f463d6",
-      "CreatedAt": "2026-11-14T12:18:29.366713188Z",
+      "ReportID": "01a1e606-13e6-7504-9b6c-a3befcfce897",
+      "CreatedAt": "2026-11-16T20:22:00.422329693Z",
       "ArtifactName": "/fx/build/vulnerable/sbom.cdx.json",
       "ArtifactType": "cyclonedx",
       "Results": [
@@ -436,7 +436,7 @@
                 "CWE-674"
               ],
               "VendorSeverity": {
-                "amazon": 2,
+                "amazon": 4,
                 "ghsa": 3,
                 "nvd": 2,
                 "redhat": 2,
@@ -522,7 +522,7 @@
                 "CWE-74"
               ],
               "VendorSeverity": {
-                "amazon": 2,
+                "amazon": 4,
                 "ghsa": 2,
                 "nvd": 2,
                 "redhat": 2,
@@ -839,8 +839,8 @@
       "Trivy": {
         "Version": "0.76.1"
       },
-      "ReportID": "01a1d9fe-b0a2-79b0-96b4-3b168c5f23cc",
-      "CreatedAt": "2026-11-14T12:18:29.666636737Z",
+      "ReportID": "01a1e606-14df-74d7-9b5f-401ce08b6106",
+      "CreatedAt": "2026-11-16T20:22:00.671318189Z",
       "ArtifactName": "/fx/src/vulnerable/app",
       "ArtifactType": "filesystem",
       "Results": [
@@ -1090,18 +1090,18 @@
       },
       "time": {
         "rules": [],
-        "rules_parse_time": 0.039411067962646484,
+        "rules_parse_time": 0.03127479553222656,
         "profiling_times": {
-          "config_time": 0.23566651344299316,
-          "core_time": 0.4056870937347412,
-          "ignores_time": 0.0001285076141357422,
-          "total_time": 0.6497020721435547
+          "config_time": 0.5605096817016602,
+          "core_time": 0.2596771717071533,
+          "ignores_time": 0.00009274482727050781,
+          "total_time": 0.8289852142333984
         },
         "parsing_time": {
-          "total_time": 0.010869026184082031,
+          "total_time": 0.009297847747802734,
           "per_file_time": {
-            "mean": 0.001358628273010254,
-            "std_dev": 0.000012918504339154424
+            "mean": 0.0011622309684753418,
+            "std_dev": 0.000009451032891405472
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -1110,9 +1110,9 @@
           "very_slow_files": []
         },
         "scanning_time": {
-          "total_time": 0.023363113403320312,
+          "total_time": 0.019217967987060547,
           "per_file_time": {
-            "mean": 0.023363113403320312,
+            "mean": 0.019217967987060547,
             "std_dev": 0.0
           },
           "very_slow_stats": {
@@ -1122,10 +1122,10 @@
           "very_slow_files": []
         },
         "matching_time": {
-          "total_time": 0.008836030960083008,
+          "total_time": 0.0069370269775390625,
           "per_file_and_rule_time": {
-            "mean": 0.001104503870010376,
-            "std_dev": 0.000002380837002213809
+            "mean": 0.0008671283721923828,
+            "std_dev": 0.000001261089153103967
           },
           "very_slow_stats": {
             "time_ratio": 0.0,
@@ -1134,10 +1134,10 @@
           "very_slow_rules_on_files": []
         },
         "tainting_time": {
-          "total_time": 0.0015366077423095703,
+          "total_time": 0.0008215904235839844,
           "per_def_and_rule_time": {
-            "mean": 0.00005487884793962751,
-            "std_dev": 1.5012988657236766E-8
+            "mean": 0.000029342515127999438,
+            "std_dev": 2.34585858221663E-9
           },
           "very_slow_stats": {
             "time_ratio": 0.0,

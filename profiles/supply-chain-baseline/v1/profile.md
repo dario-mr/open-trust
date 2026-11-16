@@ -36,7 +36,7 @@ Container images are pinned by multi-arch index digest. Use the native platform 
 
 | Check | Tool | Version | Image |
 |---|---|---|---|
-| sbom | Syft | 1.55.0 | `anchore/syft@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a` |
+| sbom | Syft | 1.56.0 | `anchore/syft@sha256:697ae864af1299cfa43c54b161cea3dd65c6d54de82e3dba66ea3dccb3acc313` |
 | vulns, secrets | Trivy | 0.76.1 | `aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c` |
 | sast | Semgrep CE | 1.183.0 | `semgrep/semgrep@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0` |
 | policy | OPA | 1.22.0 | `openpolicyagent/opa@sha256:895872de1e8dc5b82e04f9410d2d1ada2f72d28fdcdba0e8789d91cfc27ec0d0` |
