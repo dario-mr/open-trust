@@ -7,7 +7,9 @@
 #     needs: [build]
 #     variables:
 #       OTRUST_REF: <sha>                     # otrust revision to build; use the same commit as the include
-#       OTRUST_IMAGE: image.oci.tar           # OCI layout tar under $CI_PROJECT_DIR (e.g. a build artifact)
+#       OTRUST_IMAGE: image.oci.tar           # OCI layout tar under $CI_PROJECT_DIR (e.g. a build artifact),
+#                                             # or a registry image pinned by digest: $CI_REGISTRY_IMAGE@sha256:…
+#                                             # (this project's registry is logged in with the job token)
 #       OTRUST_SUBJECT: registry.example.com/acme/svc
 #
 # Trust level: L1+ci-identity. GitLab's OIDC token names the top-level pipeline, never an included
@@ -39,6 +41,8 @@
     - git -C /opt/open-trust -c advice.detachedHead=false checkout --quiet "$OTRUST_REF"
     - (cd /opt/open-trust && CGO_ENABLED=0 go build -trimpath -buildvcs=false -o /usr/local/bin/otrust ./cmd/otrust)
     - for i in 1 2 3 4 5 6 7 8 9 10; do docker info >/dev/null 2>&1 && break; sleep 3; done
+    # shortcut: only the GitLab registry is logged in; other registries must be public to the runner
+    - case "${CI_REGISTRY:-none}/" in "${OTRUST_IMAGE%%/*}/") echo "$CI_JOB_TOKEN" | docker login -u gitlab-ci-token --password-stdin "$CI_REGISTRY" >/dev/null;; esac
   script:
     - |
       set +e
