@@ -259,11 +259,12 @@ Original scope:
 - `test/adversarial/`: one script per row in §6, run against both CIs.
 - **Exit:** the same commit assessed on GitHub and on GitLab produces two certificates. The verifier gives both the **same check results** and the **correct, different trust levels**.
 
-### Week 5: trust files, the demo and feedback (Phases 5, 6)
-- `release.yml`: build `otrust` binaries on tag and sign them (attested provenance). A verifier can then refuse revoked agent versions by digest. Moved from week 4.
-- `trust/revocations.json`, signed and served statically. `verify --online` fetches it, and runs offline without it.
-- Record the demo scenarios (§7). Write one consumer page: what each trust level proves and what it doesn't.
-- **Gate G1 (go/no-go):** apply the technical criteria in open-trust-plan.md §7: differentiation, trust, portability, privacy and adoption effort. The demand criteria (vendor confirmations, a pilot) are **out of scope for this POC**. G1 can only say "technically viable", not "worth building".
+### Week 5: trust files, the demo and feedback (Phases 5, 6). Done
+- `release.yml`: on a version tag, builds `otrust` for linux and darwin (amd64 and arm64), attests the build provenance and publishes a GitHub release. The assessors (`assess.yml`, the GitLab template) use the identical build (`CGO_ENABLED=0 -trimpath -buildvcs=false`). **Verified:** the v0.1.1 release, the GitHub assessor and the GitLab template all produce linux/amd64 digest `df6a7d22…`, the `agentDigest` in their certificates. v0.1.0 did not match, because VCS stamping put the tag into the binary, so it was superseded.
+- `trust/revocations.json` is signed keyless by `revocations.yml` (on change and weekly; valid 14 days) and served as an asset of the `revocations` release. `verify --online` fetches it and accepts only that workflow on `main` as the signer. `--revocations` takes a downloaded signed list, or the buyer's own plain list. Its first entry revokes the pre-release assessor binary (df86e37).
+- Demo: [demo/scenarios.sh](demo/scenarios.sh) runs the §7 scenarios from the buyer side with the released binary, and its recorded run is [demo/RESULTS.txt](demo/RESULTS.txt): **12 of 12 as expected**. Expiry is covered by a unit test only, since no certificate is 30 days old yet. Consumer page: [docs/consumer-guide.md](docs/consumer-guide.md).
+- **Gate G1:** [research/g1-go-no-go.md](research/g1-go-no-go.md). **Technical GO, narrowed, demand unvalidated.**
+- Found: GitHub and GitLab built the same commit to **different image digests** (different BuildKit versions). Each certificate binds its own image, so a buyer must get the image and the certificate from the same pipeline.
 
 ---
 

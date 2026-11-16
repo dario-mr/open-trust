@@ -213,7 +213,7 @@ func printReport(w io.Writer, r *verify.Report) {
 	if r.SignerIdentity != "" {
 		fmt.Fprintf(w, "%s Signature   %s\n", ok(reached(verify.InvalidSignature)), r.SignerIdentity)
 	}
-	if reached(verify.UntrustedSigner) {
+	if r.SignerName != "" && reached(verify.UntrustedSigner) {
 		fmt.Fprintf(w, "✔ Signer      %q in your trust policy\n", r.SignerName)
 	}
 	if p := r.Predicate; p != nil {

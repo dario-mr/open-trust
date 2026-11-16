@@ -1,0 +1,310 @@
+
+== Setup: the released otrust v0.1.1, checked against its build provenance
+
+== Setup: the vendor's artifacts (GitHub: latest run; GitLab: latest pipeline on main) and trust policies
+GitHub run 43908518870
+
+== 1a. Clean pass on GitHub: the isolated assessor
+$ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --evidence gh/otrust-image-clean
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
+  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    Trust level L1+isolated-assessor
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       PASSED
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+  ✔ Evidence    digests match and the policy re-evaluates to the same results
+  ℹ no revocation list given: revocation not checked (use --online)
+  
+  VERIFIED
+→ VERIFIED, as expected
+
+== 1b. The same app on GitLab: the vendor's own pipeline signs, so only ci-identity
+$ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
+  ✔ Signature   https://gitlab.com/dario-mr/open-trust-demo//.gitlab-ci.yml@refs/heads/main
+  ✔ Signer      "open-trust-demo GitLab pipeline" in your trust policy
+  ✔ Artifact    sha256:61c09e5daec4e1607edc297be562cc94e327213808eb84258bb5851836f7868a
+    Source      https://gitlab.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (gitlab)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:36:05Z, valid until 2026-12-16T16:36:05Z
+    Trust level L1+ci-identity
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       WARN
+        - provenance is not signed
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+    Limitation  The vendor's own CI pipeline ran and signed the assessment; it was not an isolated assessor
+  ✔ Evidence    digests match and the policy re-evaluates to the same results
+  ℹ no revocation list given: revocation not checked (use --online)
+  
+  VERIFIED
+→ VERIFIED, as expected
+
+== 1c. A buyer who demands the isolated assessor rejects the GitLab certificate
+$ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab-strict.yaml
+  ✔ Signature   https://gitlab.com/dario-mr/open-trust-demo//.gitlab-ci.yml@refs/heads/main
+  ✔ Signer      "open-trust-demo GitLab pipeline" in your trust policy
+  ✔ Artifact    sha256:61c09e5daec4e1607edc297be562cc94e327213808eb84258bb5851836f7868a
+    Source      https://gitlab.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (gitlab)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:36:05Z, valid until 2026-12-16T16:36:05Z
+    Trust level L1+ci-identity
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       WARN
+        - provenance is not signed
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+    Limitation  The vendor's own CI pipeline ran and signed the assessment; it was not an isolated assessor
+  
+  TRUST_LEVEL_TOO_LOW: trust level L1+ci-identity is below the required L1+isolated-assessor
+→ TRUST_LEVEL_TOO_LOW, as expected
+
+== 2. A vulnerable dependency (log4j 2.14.1) fails the assessment
+$ v gh/otrust-image-vulnerable/certificate.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust.yaml
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
+  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:07bc15baef6ac38e7bf90b89476f6548dd1667bb70e9866f2efbe03656d6377a
+    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:34:24Z, valid until 2026-12-16T16:34:24Z
+    Trust level L1+isolated-assessor
+    Checks:
+      sbom             PASSED
+      vulns            FAILED
+        - CRITICAL CVE-2021-44228 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.15.0, 2.3.1, 2.12.2)
+        - CRITICAL CVE-2021-45046 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.16.0, 2.12.2, 2.3.1)
+        - HIGH CVE-2021-45105 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.12.3, 2.17.0, 2.3.1)
+      secrets          PASSED
+      sast             PASSED
+      provenance       PASSED
+      subject_binding  PASSED
+    Unmet       vulns: CRITICAL CVE-2021-44228 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.15.0, 2.3.1, 2.12.2)
+    Unmet       vulns: CRITICAL CVE-2021-45046 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.16.0, 2.12.2, 2.3.1)
+    Unmet       vulns: HIGH CVE-2021-45105 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.12.3, 2.17.0, 2.3.1)
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+  ℹ no revocation list given: revocation not checked (use --online)
+  
+  ASSESSMENT_FAILED: assessment result is FAILED
+→ ASSESSMENT_FAILED, as expected
+
+== 3. A changed image: the clean certificate presented with the vulnerable image
+$ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust.yaml
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
+  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
+  ✘ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    Trust level L1+isolated-assessor
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       PASSED
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+  
+  ARTIFACT_MISMATCH: image is sha256:07bc15baef6ac38e7bf90b89476f6548dd1667bb70e9866f2efbe03656d6377a, certificate is for sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+→ ARTIFACT_MISMATCH, as expected
+
+== 4. An edited certificate: FAILED rewritten to PASSED
+$ v edited.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust.yaml
+  
+  INVALID_SIGNATURE: failed to verify log inclusion: transparency log dsse/intoto entry payload hash d2bf36f439facb2fd13c528c0abd32b4165e6ed75bc2276b13d381906dea87aa does not match envelope payload hash b47cdb00d3e81050710adc5da248e6ca5232a5a8a463e104c65c829a60166d7b
+→ INVALID_SIGNATURE, as expected
+
+== 5a. Revoked by the buyer's own list
+$ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --revocations my-revocations.json
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
+  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    Trust level L1+isolated-assessor
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       PASSED
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+  ℹ revocations checked against your list my-revocations.json (1 entries)
+  
+  REVOKED: artifact sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0 revoked: recalled by our security team
+→ REVOKED, as expected
+
+== 5b. Revoked by the signed Open Trust list (--online): a pre-release assessor binary
+$ v old/otrust-image-clean/certificate.sigstore.json --image old/image-clean/image.oci.tar --trust-policy old/trust.yaml --online
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@df86e37bb89823adc03dd6422d56d33ce4583416
+  ✔ Signer      "Open Trust assessor (df86e37bb89823adc03dd6422d56d33ce4583416) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:fa065e4e84130b41a0b1d30b7c482c8e6dbed31e82e2d73cbf9ba37c7afba5e2
+    Source      https://github.com/dario-mr/open-trust-demo @ 8463bb89810a6451fa464cb464a475540032ff89 (github)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-14T15:32:35Z, valid until 2026-12-14T15:32:35Z
+    Trust level L1+isolated-assessor
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       PASSED
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+  ℹ revocations checked against the signed Open Trust list (1 entries, valid until 2026-11-30T16:28:12Z)
+  
+  REVOKED: assessment agent sha256:333ba7cf50700610a5f755804c86ce233705a9b2ccf2f0de9629fac1d8976570 revoked: pre-release otrust (assessor df86e37, cgo build): not a released binary; superseded by v0.1.0
+→ REVOKED, as expected
+
+== 5c. The current certificate passes the same online check
+$ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --online
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
+  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    Trust level L1+isolated-assessor
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       PASSED
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+  ℹ revocations checked against the signed Open Trust list (1 entries, valid until 2026-11-30T16:28:12Z)
+  
+  VERIFIED
+→ VERIFIED, as expected
+
+== 6. A key-signed run from a CI with no OIDC identity (a 'Jenkins' job), assessing the same image
+  Subject   sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+  Source    https://github.com/dario-mr/open-trust-demo.git @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (generic)
+  Profile   supply-chain-baseline 1.0.0
+  
+  ✔ sbom             PASSED
+  ✔ vulns            PASSED
+  ✔ secrets          PASSED
+  ✔ sast             PASSED
+  ⚠ provenance       WARN
+      - provenance is not signed
+  ✔ subject_binding  PASSED
+  
+  Result    PASSED
+  Trust     L1
+  Output    ~/.cache/otrust-demo/jenkins-out/certificate.sigstore.json  (give this and the image to customers)
+  Evidence  ~/.cache/otrust-demo/jenkins-out  (stays with you; share only if you choose)
+
+== 6a. Verified, at the level a key can prove
+$ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust-key.yaml --evidence jenkins-out
+  ✔ Signature   key yReFvmzmM69CBWZjt4KHcYyoRXMtonn5eh2UMzY6aPk=
+  ✔ Signer      "Acme Jenkins key" in your trust policy
+  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+    Source      https://github.com/dario-mr/open-trust-demo.git @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (generic)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:40:43Z, valid until 2026-12-16T16:40:43Z
+    Trust level L1
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       WARN
+        - provenance is not signed
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+    Limitation  Signed with a vendor-held key: proves who signed, not which pipeline ran the assessment
+  ✔ Evidence    digests match and the policy re-evaluates to the same results
+  ℹ no revocation list given: revocation not checked (use --online)
+  
+  VERIFIED
+→ VERIFIED, as expected
+
+== 6b. A buyer requiring a CI identity rejects it
+$ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust-key-strict.yaml
+  ✔ Signature   key yReFvmzmM69CBWZjt4KHcYyoRXMtonn5eh2UMzY6aPk=
+  ✔ Signer      "Acme Jenkins key" in your trust policy
+  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+    Source      https://github.com/dario-mr/open-trust-demo.git @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (generic)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:40:43Z, valid until 2026-12-16T16:40:43Z
+    Trust level L1
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       WARN
+        - provenance is not signed
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+    Limitation  Signed with a vendor-held key: proves who signed, not which pipeline ran the assessment
+  
+  TRUST_LEVEL_TOO_LOW: trust level L1 is below the required L1+ci-identity
+→ TRUST_LEVEL_TOO_LOW, as expected
+
+== 7. Fully offline: no network in the container
+$ docker run --rm --network none -v ~/.cache/otrust-demo:/w:ro -w /w golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf /w/otrust-linux-arm64 verify gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --trusted-root root.json --evidence gh/otrust-image-clean
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
+  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+    Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
+    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    Trust level L1+isolated-assessor
+    Checks:
+      sbom             PASSED
+      vulns            PASSED
+      secrets          PASSED
+      sast             PASSED
+      provenance       PASSED
+      subject_binding  PASSED
+    Limitation  Scanners detect known vulnerabilities and pattern-matched code flaws only
+    Limitation  Does not prove the scanned source is the complete source of the artifact
+    Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+  ✔ Evidence    digests match and the policy re-evaluates to the same results
+  ℹ no revocation list given: revocation not checked (use --online)
+  
+  VERIFIED
+→ VERIFIED, as expected
+
+== Summary: 12 as expected, 0 not (work dir ~/.cache/otrust-demo)
