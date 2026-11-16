@@ -84,7 +84,7 @@ How each level is achieved:
 - **`L1+ci-identity` (GitLab and others).** `otrust` runs as a job in the vendor's pipeline and signs with that CI's OIDC token through Fulcio. The buyer pins the vendor's project, protected ref and, where available, a hosted-runner claim. This proves *which pipeline and commit* produced the result. It does not prove that the assessment was unmodified.
 - **`L1` (key).** The vendor holds the key, ideally in a KMS. This proves only *who* signed.
 
-Research for later, outside the POC: a CI-agnostic path to isolated assessment, for example a separate "assessor" runner that pulls the artifact, or a TEE. That would bring `L1+isolated-assessor` to every CI. Also check whether GitLab adds a component-identity claim to its OIDC tokens.
+Research started after the POC ([research/isolated-assessor.md](research/isolated-assessor.md)): no CI other than GitHub can name an included template today, so the options are a remote isolated assessor that the vendor's CI calls with its OIDC token (spike next), or a TEE. The original note follows. A CI-agnostic path to isolated assessment, for example a separate "assessor" runner that pulls the artifact, or a TEE. That would bring `L1+isolated-assessor` to every CI. Also check whether GitLab adds a component-identity claim to its OIDC tokens.
 
 ---
 
