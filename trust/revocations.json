@@ -1,3 +1,8 @@
 {
-  "revoked": []
+  "revoked": [
+    {
+      "agentDigest": "333ba7cf50700610a5f755804c86ce233705a9b2ccf2f0de9629fac1d8976570",
+      "reason": "pre-release otrust (assessor df86e37, cgo build): not a released binary; superseded by v0.1.0"
+    }
+  ]
 }
