@@ -339,7 +339,7 @@ Next steps, in order:
 
 | # | Step | Why | Size |
 |---|---|---|---|
-| 1 | **Release v0.1.2 and re-pin the demo** on GitHub and GitLab | Live certificates should carry the recorded ruleset, and `agentDigest` should match the release again | Small |
+| 1 | ~~Release v0.1.2 and re-pin the demo~~ **Done.** The v0.1.2 release, the GitHub assessor and the GitLab template all give `agentDigest` `3ba9dd14…`. Both certificates record ruleset `800b43b6…`, and the demo re-ran 12/12. | Live certificates carry the recorded ruleset | Small |
 | 2 | **Demand validation**: show [docs/consumer-guide.md](docs/consumer-guide.md) and [demo/RESULTS.txt](demo/RESULTS.txt) to 3–5 buyer-side security or procurement people and 2–3 vendors. Ask whether `L1+ci-identity` is worth anything to them, or only isolation. | The main open risk. It decides whether steps 3–6 are worth doing. | Not engineering |
 | 3 | **Registry image references**: `--image registry/name@sha256:…` for assess and verify, instead of an OCI tar | The biggest adoption hurdle. Teams push to registries, and buyers pull from them. Also settles "OCI layout digest = registry digest" (§8). | Medium |
 | 4 | **Private repositories**: document the key-signed (`L1`) path for vendors who can't publish their identity in Rekor, ideally with a KMS-held key | Keyless signing puts the repository name in the public log | Small (docs). A private Fulcio/Rekor is large and deferred. |

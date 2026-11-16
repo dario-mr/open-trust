@@ -12,7 +12,7 @@
 | 4. Can the trust limitations be explicit and still meaningful? | **Yes, with an honest ceiling** | There are three trust levels, recomputed by the verifier from the signature and never taken from the certificate. Limitations, exceptions and unmet requirements are printed even on PASSED. |
 | 5. Is it simple enough to adopt? | **Mostly** | GitHub: one `uses:` job pinned by commit. GitLab: one `include:` and a few variables. Vendors still need an OCI-layout build output, and Docker for the scanners. |
 
-The success condition ("a developer can integrate the tool, produce a certificate and give another person enough to verify it independently") is met. [demo/scenarios.sh](../demo/scenarios.sh) does exactly that from the buyer's side, with the released binary. The recorded run is [demo/RESULTS.txt](../demo/RESULTS.txt): 12 of 12 scenarios gave the expected result. Releases are reproducible: the v0.1.1 binary, the GitHub assessor and the GitLab template all have the same linux/amd64 digest, and that digest is the `agentDigest` in the certificates.
+The success condition ("a developer can integrate the tool, produce a certificate and give another person enough to verify it independently") is met. [demo/scenarios.sh](../demo/scenarios.sh) does exactly that from the buyer's side, with the released binary. The recorded run is [demo/RESULTS.txt](../demo/RESULTS.txt): 12 of 12 scenarios gave the expected result. Releases are reproducible: the released binary (v0.1.1, and again v0.1.2), the GitHub assessor and the GitLab template all have the same linux/amd64 digest, and that digest is the `agentDigest` in the certificates.
 
 ## Technical criteria (open-trust-plan.md §7)
 

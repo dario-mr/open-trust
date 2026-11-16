@@ -1,17 +1,18 @@
 
-== Setup: the released otrust v0.1.1, checked against its build provenance
+== Setup: the released otrust v0.1.2, checked against its build provenance
 
 == Setup: the vendor's artifacts (GitHub: latest run; GitLab: latest pipeline on main) and trust policies
-GitHub run 43908518870
+GitHub run 43916955506
 
 == 1a. Clean pass on GitHub: the isolated assessor
 $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --evidence gh/otrust-image-clean
-  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
-  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
-  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@bdd04c9b21076e7dd41b7f222db3a09c86cc1389
+  ✔ Signer      "Open Trust assessor (bdd04c9b21076e7dd41b7f222db3a09c86cc1389) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+    Source      https://github.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (github)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:20:17Z)
+    Assessed    2026-11-16T17:20:35Z, valid until 2026-12-16T17:20:35Z
     Trust level L1+isolated-assessor
     Checks:
       sbom             PASSED
@@ -33,10 +34,11 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
 $ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
   ✔ Signature   https://gitlab.com/dario-mr/open-trust-demo//.gitlab-ci.yml@refs/heads/main
   ✔ Signer      "open-trust-demo GitLab pipeline" in your trust policy
-  ✔ Artifact    sha256:61c09e5daec4e1607edc297be562cc94e327213808eb84258bb5851836f7868a
-    Source      https://gitlab.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (gitlab)
+  ✔ Artifact    sha256:af1a3ba472f13a4b3b208f80c8893fe566a70c53fabeb1b1eae85dcc9836d836
+    Source      https://gitlab.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (gitlab)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:36:05Z, valid until 2026-12-16T16:36:05Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:21:52Z)
+    Assessed    2026-11-16T17:22:12Z, valid until 2026-12-16T17:22:12Z
     Trust level L1+ci-identity
     Checks:
       sbom             PASSED
@@ -60,10 +62,11 @@ $ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --tru
 $ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab-strict.yaml
   ✔ Signature   https://gitlab.com/dario-mr/open-trust-demo//.gitlab-ci.yml@refs/heads/main
   ✔ Signer      "open-trust-demo GitLab pipeline" in your trust policy
-  ✔ Artifact    sha256:61c09e5daec4e1607edc297be562cc94e327213808eb84258bb5851836f7868a
-    Source      https://gitlab.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (gitlab)
+  ✔ Artifact    sha256:af1a3ba472f13a4b3b208f80c8893fe566a70c53fabeb1b1eae85dcc9836d836
+    Source      https://gitlab.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (gitlab)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:36:05Z, valid until 2026-12-16T16:36:05Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:21:52Z)
+    Assessed    2026-11-16T17:22:12Z, valid until 2026-12-16T17:22:12Z
     Trust level L1+ci-identity
     Checks:
       sbom             PASSED
@@ -83,12 +86,13 @@ $ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --tru
 
 == 2. A vulnerable dependency (log4j 2.14.1) fails the assessment
 $ v gh/otrust-image-vulnerable/certificate.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust.yaml
-  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
-  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
-  ✔ Artifact    sha256:07bc15baef6ac38e7bf90b89476f6548dd1667bb70e9866f2efbe03656d6377a
-    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@bdd04c9b21076e7dd41b7f222db3a09c86cc1389
+  ✔ Signer      "Open Trust assessor (bdd04c9b21076e7dd41b7f222db3a09c86cc1389) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:09878fe1cba09123256f3c54100654206745056bad157f712dedf47c48c45ab7
+    Source      https://github.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (github)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:34:24Z, valid until 2026-12-16T16:34:24Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:20:12Z)
+    Assessed    2026-11-16T17:20:29Z, valid until 2026-12-16T17:20:29Z
     Trust level L1+isolated-assessor
     Checks:
       sbom             PASSED
@@ -113,12 +117,13 @@ $ v gh/otrust-image-vulnerable/certificate.sigstore.json --image gh/image-vulner
 
 == 3. A changed image: the clean certificate presented with the vulnerable image
 $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust.yaml
-  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
-  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
-  ✘ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@bdd04c9b21076e7dd41b7f222db3a09c86cc1389
+  ✔ Signer      "Open Trust assessor (bdd04c9b21076e7dd41b7f222db3a09c86cc1389) for open-trust-demo" in your trust policy
+  ✘ Artifact    sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+    Source      https://github.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (github)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:20:17Z)
+    Assessed    2026-11-16T17:20:35Z, valid until 2026-12-16T17:20:35Z
     Trust level L1+isolated-assessor
     Checks:
       sbom             PASSED
@@ -131,23 +136,24 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-vulnerable/
     Limitation  Does not prove the scanned source is the complete source of the artifact
     Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
   
-  ARTIFACT_MISMATCH: image is sha256:07bc15baef6ac38e7bf90b89476f6548dd1667bb70e9866f2efbe03656d6377a, certificate is for sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
+  ARTIFACT_MISMATCH: image is sha256:09878fe1cba09123256f3c54100654206745056bad157f712dedf47c48c45ab7, certificate is for sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
 → ARTIFACT_MISMATCH, as expected
 
 == 4. An edited certificate: FAILED rewritten to PASSED
 $ v edited.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust.yaml
   
-  INVALID_SIGNATURE: failed to verify log inclusion: transparency log dsse/intoto entry payload hash d2bf36f439facb2fd13c528c0abd32b4165e6ed75bc2276b13d381906dea87aa does not match envelope payload hash b47cdb00d3e81050710adc5da248e6ca5232a5a8a463e104c65c829a60166d7b
+  INVALID_SIGNATURE: failed to verify log inclusion: transparency log dsse/intoto entry payload hash 7d64720216549fb77114db741f13ac00583de74cebfd71613f1a54dfc6ebe297 does not match envelope payload hash f2f885c42d95ad9cb1c80bdbbe56b7dedc6000258789c946b7c96dec367c7c9a
 → INVALID_SIGNATURE, as expected
 
 == 5a. Revoked by the buyer's own list
 $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --revocations my-revocations.json
-  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
-  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
-  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@bdd04c9b21076e7dd41b7f222db3a09c86cc1389
+  ✔ Signer      "Open Trust assessor (bdd04c9b21076e7dd41b7f222db3a09c86cc1389) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+    Source      https://github.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (github)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:20:17Z)
+    Assessed    2026-11-16T17:20:35Z, valid until 2026-12-16T17:20:35Z
     Trust level L1+isolated-assessor
     Checks:
       sbom             PASSED
@@ -161,7 +167,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
     Limitation  Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
   ℹ revocations checked against your list my-revocations.json (1 entries)
   
-  REVOKED: artifact sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0 revoked: recalled by our security team
+  REVOKED: artifact sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191 revoked: recalled by our security team
 → REVOKED, as expected
 
 == 5b. Revoked by the signed Open Trust list (--online): a pre-release assessor binary
@@ -190,12 +196,13 @@ $ v old/otrust-image-clean/certificate.sigstore.json --image old/image-clean/ima
 
 == 5c. The current certificate passes the same online check
 $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --online
-  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
-  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
-  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@bdd04c9b21076e7dd41b7f222db3a09c86cc1389
+  ✔ Signer      "Open Trust assessor (bdd04c9b21076e7dd41b7f222db3a09c86cc1389) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+    Source      https://github.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (github)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:20:17Z)
+    Assessed    2026-11-16T17:20:35Z, valid until 2026-12-16T17:20:35Z
     Trust level L1+isolated-assessor
     Checks:
       sbom             PASSED
@@ -213,8 +220,8 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
 → VERIFIED, as expected
 
 == 6. A key-signed run from a CI with no OIDC identity (a 'Jenkins' job), assessing the same image
-  Subject   sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-  Source    https://github.com/dario-mr/open-trust-demo.git @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (generic)
+  Subject   sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+  Source    https://github.com/dario-mr/open-trust-demo.git @ 1359571bc0a88235aaf069d4be4da9f827337fcc (generic)
   Profile   supply-chain-baseline 1.0.0
   
   ✔ sbom             PASSED
@@ -232,12 +239,13 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
 
 == 6a. Verified, at the level a key can prove
 $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust-key.yaml --evidence jenkins-out
-  ✔ Signature   key yReFvmzmM69CBWZjt4KHcYyoRXMtonn5eh2UMzY6aPk=
+  ✔ Signature   key yCWbXr8K6ZBuJqYgIY5AaBgBeSuRQ/fGsrWU3JLsj7U=
   ✔ Signer      "Acme Jenkins key" in your trust policy
-  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-    Source      https://github.com/dario-mr/open-trust-demo.git @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (generic)
+  ✔ Artifact    sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+    Source      https://github.com/dario-mr/open-trust-demo.git @ 1359571bc0a88235aaf069d4be4da9f827337fcc (generic)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:40:43Z, valid until 2026-12-16T16:40:43Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:25:17Z)
+    Assessed    2026-11-16T17:25:20Z, valid until 2026-12-16T17:25:20Z
     Trust level L1
     Checks:
       sbom             PASSED
@@ -259,12 +267,13 @@ $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar -
 
 == 6b. A buyer requiring a CI identity rejects it
 $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust-key-strict.yaml
-  ✔ Signature   key yReFvmzmM69CBWZjt4KHcYyoRXMtonn5eh2UMzY6aPk=
+  ✔ Signature   key yCWbXr8K6ZBuJqYgIY5AaBgBeSuRQ/fGsrWU3JLsj7U=
   ✔ Signer      "Acme Jenkins key" in your trust policy
-  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-    Source      https://github.com/dario-mr/open-trust-demo.git @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (generic)
+  ✔ Artifact    sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+    Source      https://github.com/dario-mr/open-trust-demo.git @ 1359571bc0a88235aaf069d4be4da9f827337fcc (generic)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:40:43Z, valid until 2026-12-16T16:40:43Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:25:17Z)
+    Assessed    2026-11-16T17:25:20Z, valid until 2026-12-16T17:25:20Z
     Trust level L1
     Checks:
       sbom             PASSED
@@ -284,12 +293,13 @@ $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar -
 
 == 7. Fully offline: no network in the container
 $ docker run --rm --network none -v ~/.cache/otrust-demo:/w:ro -w /w golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf /w/otrust-linux-arm64 verify gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --trusted-root root.json --evidence gh/otrust-image-clean
-  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@348609a5a85569de4b8882dc6c63fad1fbf46a23
-  ✔ Signer      "Open Trust assessor (348609a5a85569de4b8882dc6c63fad1fbf46a23) for open-trust-demo" in your trust policy
-  ✔ Artifact    sha256:5216f4717d20d9ce9de4838cd8b97a0183ea2a1e8747f8d864bd22725ee027a0
-    Source      https://github.com/dario-mr/open-trust-demo @ 7aa27ffd538c7bc5834017e2bfcd82acdc261e1c (github)
+  ✔ Signature   https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@bdd04c9b21076e7dd41b7f222db3a09c86cc1389
+  ✔ Signer      "Open Trust assessor (bdd04c9b21076e7dd41b7f222db3a09c86cc1389) for open-trust-demo" in your trust policy
+  ✔ Artifact    sha256:92037477fcf280a15aaa49e85f322b0d5d33cf471651350cd2fb2890d2313191
+    Source      https://github.com/dario-mr/open-trust-demo @ 1359571bc0a88235aaf069d4be4da9f827337fcc (github)
     Profile     https://open-trust.dev/profiles/supply-chain-baseline/1.0.0
-    Assessed    2026-11-16T16:34:15Z, valid until 2026-12-16T16:34:15Z
+    SAST rules  p/java sha256:800b43b623f3f9a72fd80633b429de99db37506cabd3c75e55143d46fedb5d32 (60 rules, fetched 2026-11-16T17:20:17Z)
+    Assessed    2026-11-16T17:20:35Z, valid until 2026-12-16T17:20:35Z
     Trust level L1+isolated-assessor
     Checks:
       sbom             PASSED
