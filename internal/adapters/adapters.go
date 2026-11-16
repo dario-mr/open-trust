@@ -5,14 +5,21 @@ package adapters
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"time"
+
+	"gopkg.in/yaml.v3"
 
 	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
@@ -39,6 +46,60 @@ type Evidence struct {
 	Commands map[string][]string
 	// NeutralizedIgnores lists vendor .semgrepignore files that were blanked for the SAST scan.
 	NeutralizedIgnores []string
+	SemgrepRuleset     Ruleset
+}
+
+// SemgrepRegistry serves a ruleset such as p/java as one YAML document.
+const SemgrepRegistry = "https://semgrep.dev/c/"
+
+// Ruleset is the SAST ruleset exactly as fetched for this run. Semgrep's registry rules are current
+// but may not be redistributed, so the certificate records their digest, not a copy, and the file
+// is deleted after the scan.
+type Ruleset struct {
+	Source  string `json:"source"`
+	URL     string `json:"url"`
+	SHA256  string `json:"sha256"`
+	Fetched string `json:"fetched"`
+	Rules   int    `json:"rules"`
+}
+
+const rulesFile = ".otrust-semgrep-rules.yaml" // in WorkDir during the scan only
+
+// rulesMount is where semgrep sees the ruleset. Semgrep prefixes rule IDs with the config file's
+// directory, so the file must sit at the root: exception keys use the registry rule IDs.
+const rulesMount = "/otrust-semgrep-rules.yaml"
+
+func fetchRuleset(ctx context.Context, source string) ([]byte, Ruleset, error) {
+	rs := Ruleset{Source: source, URL: SemgrepRegistry + source, Fetched: time.Now().UTC().Format(time.RFC3339)}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rs.URL, nil)
+	if err != nil {
+		return nil, rs, err
+	}
+	// the registry's CDN serves JSON to gzip clients and YAML otherwise; the digest must always be
+	// over the same bytes, so ask for an uncompressed (YAML) response
+	req.Header.Set("Accept-Encoding", "identity")
+	resp, err := (&http.Client{Timeout: time.Minute}).Do(req)
+	if err != nil {
+		return nil, rs, fmt.Errorf("semgrep ruleset: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, rs, fmt.Errorf("semgrep ruleset %s: %s", rs.URL, resp.Status)
+	}
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
+	if err != nil {
+		return nil, rs, err
+	}
+	var doc struct {
+		Rules []yaml.Node `yaml:"rules"`
+	}
+	if yaml.Unmarshal(b, &doc) != nil || len(doc.Rules) == 0 {
+		return nil, rs, fmt.Errorf("semgrep ruleset %s: not a rules document", rs.URL)
+	}
+	rs.Rules = len(doc.Rules)
+	sum := sha256.Sum256(b)
+	rs.SHA256 = hex.EncodeToString(sum[:])
+	return b, rs, nil
 }
 
 func (r *Runner) docker(ctx context.Context, image string, okExit []int, mounts []string, args ...string) ([]byte, []string, error) {
@@ -106,7 +167,7 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 		"version", "--format", "json")
 	// --offline-scan: a secrets scan must not resolve dependencies over the network (leaks names; rate limits)
 	secretArgs := []string{"fs", "--quiet", "--offline-scan", "--scanners", "secret", "--format", "json"}
-	sastArgs := []string{"semgrep", "scan", "--metrics=off", "--quiet", "--json", "--config", r.Tools.Semgrep.Config}
+	sastArgs := []string{"semgrep", "scan", "--metrics=off", "--quiet", "--json", "--config", rulesMount}
 	for _, rel := range r.Exclude {
 		flag := "--skip-files"
 		if fi, statErr := os.Stat(filepath.Join(r.SourceDir, rel)); statErr == nil && fi.IsDir() {
@@ -128,6 +189,15 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 			for _, rel := range ev.NeutralizedIgnores {
 				mounts = append(mounts, empty+":/src/"+filepath.ToSlash(rel)+":ro")
 			}
+		}
+	}
+	if err == nil {
+		var rules []byte
+		if rules, ev.SemgrepRuleset, err = fetchRuleset(ctx, r.Tools.Semgrep.Config); err == nil {
+			path := filepath.Join(r.WorkDir, rulesFile)
+			err = os.WriteFile(path, rules, 0o644)
+			defer os.Remove(path)
+			mounts = append(mounts, path+":"+rulesMount+":ro")
 		}
 	}
 	// semgrep exits 1 when it has findings: a result, not an error

@@ -18,7 +18,7 @@ For the exact artifact digest in the certificate subject:
 4. The source was scanned with static analysis, and no ERROR-severity findings remain, except those listed as exceptions.
 5. Build provenance exists for the artifact, and its subject matches the artifact.
 6. The artifact digest that was assessed is the digest the certificate is about.
-7. All of the above used the tool versions and this policy version, as recorded in the certificate.
+7. All of the above used the tool versions and this policy version, as recorded in the certificate. The SAST ruleset is the registry's current one, recorded by digest (§9).
 
 The certificate always lists warnings, exceptions and unmet requirements. A PASSED result never hides them.
 
@@ -48,7 +48,7 @@ The reference invocations are in [`fixtures/generate.sh`](fixtures/generate.sh):
 | sbom | `syft scan <image> -o cyclonedx-json` | the **artifact** |
 | vulns | `trivy sbom --format json <sbom>` | **that SBOM** |
 | secrets | `trivy fs --scanners secret --format json <src>` | the **source** at the assessed revision |
-| sast | `semgrep scan --metrics=off --json --config p/java <src>` | the **source** at the assessed revision |
+| sast | `semgrep scan --metrics=off --json --config <p/java, fetched; digest recorded> <src>` | the **source** at the assessed revision |
 
 ## 4. Policy input
 
@@ -126,7 +126,7 @@ This profile's rules are identical at every level. Only how far a buyer can trus
 
 Found while generating the fixtures:
 
-- **The Semgrep ruleset is not pinned by content.** `p/java` comes from the Semgrep registry at run time. A ruleset snapshot must be pinned, and its digest recorded, before v1.0.0 is final. This is still open after week 2. Before shipping it, check the licence terms of the registry rules for redistribution.
+- **The Semgrep ruleset is recorded, not pinned.** `p/java` is fetched from the Semgrep registry at run time, so every assessment uses Semgrep's current rules. Those rules may not be redistributed under the Semgrep Rules License, so a fixed snapshot can't ship with the profile. Pinning to a fixed registry fingerprint was rejected too, because every registry update would break assessments. Instead `otrust` records exactly what it used: the SHA-256 of the fetched file, the rule count and the fetch time (`tools.semgrep.ruleset`). It deletes the file after the scan. Two certificates of this profile version may therefore have used different SAST rules, and the fingerprint says whether they did.
 - **Vendor-controlled scanner configuration.** A `.semgrepignore` containing `*`, committed at any depth, made Semgrep scan zero files, which meant a vacuous SAST PASS. `otrust` now blanks every `.semgrepignore` for the scan by mounting an empty file over it read-only, and lists those files in the certificate (`tools.semgrep.neutralizedIgnoreFiles`). Other in-tree configuration that a scanner might honour has to be reviewed the same way whenever a tool is added or upgraded.
 - **`p/java` did not flag** `Runtime.getRuntime().exec("sh -c " + input)` in the fixture. It flagged only the SQL injection. Claim 4 is limited to what the ruleset covers.
 - **Trivy's JSON output does not record the vulnerability DB version.** `otrust` captures it separately with `trivy version --format json`. It stores the result as evidence (`trivy-db.json`) and in the certificate (`tools.trivy.db`).

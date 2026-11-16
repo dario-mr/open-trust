@@ -221,6 +221,11 @@ func printReport(w io.Writer, r *verify.Report) {
 		fmt.Fprintf(w, "%s Artifact    %s\n", ok(reached(verify.ArtifactMismatch)), r.SubjectDigest)
 		fmt.Fprintf(w, "  Source      %s @ %s (%s)\n", orDash(e.CI.Repo), e.CI.Revision, e.CI.Provider)
 		fmt.Fprintf(w, "  Profile     %s\n", p.Policy.URI)
+		if sg, ok := e.Tools["semgrep"].(map[string]any); ok {
+			if rs, ok := sg["ruleset"].(map[string]any); ok {
+				fmt.Fprintf(w, "  SAST rules  %v sha256:%v (%v rules, fetched %v)\n", rs["source"], rs["sha256"], rs["rules"], rs["fetched"])
+			}
+		}
 		fmt.Fprintf(w, "  Assessed    %s, valid until %s\n", p.TimeVerified, e.ValidUntil)
 		fmt.Fprintf(w, "  Trust level %s\n", r.TrustLevel)
 		fmt.Fprintln(w, "  Checks:")

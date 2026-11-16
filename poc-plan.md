@@ -323,6 +323,30 @@ Scenarios to show:
 - **Differentiation.** Liatrio autogov already does reusable workflows, Rego and a VSA, but **only on GitHub**. Chainloop and Witness work across CIs but are aimed at internal teams. Our edge is a CI-agnostic, buyer-facing profile and verifier that are honest about trust levels.
 - **Private repositories and public Rekor.** Keyless signing through public Sigstore publishes the repo and pipeline identity in Rekor, on every CI. The options are a private Fulcio and Rekor, or KMS-based `L1`. Whether vendors care is unvalidated.
 - **GitLab provenance.** It may be unsigned (D13), which would make the provenance check WARN-only on GitLab.
-- **Semgrep on Java.** The free rules may be noisy. If so, the SAST check is WARN-only in v1.
+- **Semgrep on Java.** The free rules may be noisy. If so, the SAST check is WARN-only in v1. The ruleset is recorded by digest, not pinned (§9).
 - **Digest stability.** Test early that the OCI-layout digest equals the registry digest, across buildx, kaniko and buildah.
 - **Demand.** This POC doesn't validate demand at all. A technical go at G1 still leaves the main business risk open.
+
+---
+
+## 9. After the POC: decisions and next steps
+
+Decisions taken after G1 (2026-11-16):
+- **Trust levels outside GitHub stay honest.** GitLab and other OIDC CIs reach `L1+ci-identity`, and key-signed runs reach `L1`. That gives accountability through the public signature log, not prevention. A remote assessor was rejected, because it would make vendors depend on GitHub or on a service we run, and the system must be self-contained. A TEE assessor is shelved ([research/isolated-assessor.md](research/isolated-assessor.md)).
+- **The SAST ruleset is recorded, not pinned.** Semgrep's registry rules are current but can't be redistributed, and a frozen snapshot would be obsolete. Every certificate records the exact rules it used, by digest, rule count and fetch time (profile.md §9).
+
+Next steps, in order:
+
+| # | Step | Why | Size |
+|---|---|---|---|
+| 1 | **Release v0.1.2 and re-pin the demo** on GitHub and GitLab | Live certificates should carry the recorded ruleset, and `agentDigest` should match the release again | Small |
+| 2 | **Demand validation**: show [docs/consumer-guide.md](docs/consumer-guide.md) and [demo/RESULTS.txt](demo/RESULTS.txt) to 3–5 buyer-side security or procurement people and 2–3 vendors. Ask whether `L1+ci-identity` is worth anything to them, or only isolation. | The main open risk. It decides whether steps 3–6 are worth doing. | Not engineering |
+| 3 | **Registry image references**: `--image registry/name@sha256:…` for assess and verify, instead of an OCI tar | The biggest adoption hurdle. Teams push to registries, and buyers pull from them. Also settles "OCI layout digest = registry digest" (§8). | Medium |
+| 4 | **Private repositories**: document the key-signed (`L1`) path for vendors who can't publish their identity in Rekor, ideally with a KMS-held key | Keyless signing puts the repository name in the public log | Small (docs). A private Fulcio/Rekor is large and deferred. |
+| 5 | **Live CI attack runs**: a self-hosted runner, a wrong workflow ref and an outdated assessor pin, run on real CI | Today these rows of the §6 matrix rest on unit tests and reasoning | Small–medium |
+| 6 | **Maintenance hygiene**: update scanner pins on a schedule, and keep the weekly revocation re-signing alive (GitHub disables schedules after 60 days without activity) | A certificate is only as current as its tools | Small, recurring |
+
+Parked, revisited only if step 2 asks for them:
+- a buyer-side **re-check** of the image-based checks (SBOM, vulnerabilities), which needs no trust in the vendor on any CI;
+- a TEE assessor;
+- GitLab component identity, if GitLab ever adds such a claim to its tokens.

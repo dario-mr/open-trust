@@ -173,7 +173,7 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 			"syft":  tools.Syft,
 			"trivy": map[string]any{"version": tools.Trivy.Version, "image": tools.Trivy.Image, "db": trivyDB},
 			"semgrep": map[string]any{"version": tools.Semgrep.Version, "image": tools.Semgrep.Image, "config": tools.Semgrep.Config,
-				"neutralizedIgnoreFiles": nonNil(ev.NeutralizedIgnores)},
+				"ruleset": ev.SemgrepRuleset, "neutralizedIgnoreFiles": nonNil(ev.NeutralizedIgnores)},
 		},
 		Decision:       dec,
 		Evidence:       evidenceDigests(digests),

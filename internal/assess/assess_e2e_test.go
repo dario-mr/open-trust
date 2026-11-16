@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/dario-mr/open-trust/internal/adapters"
 	"github.com/dario-mr/open-trust/internal/statement"
 )
 
@@ -151,5 +152,13 @@ func TestE2EVendorSemgrepignoreIsNeutralized(t *testing.T) {
 	got := ext.Tools["semgrep"].(map[string]any)["neutralizedIgnoreFiles"].([]string)
 	if len(got) != 2 {
 		t.Fatalf("neutralized ignore files = %v, want both recorded", got)
+	}
+	// the exact ruleset used is recorded by digest, and the (non-redistributable) file is not kept
+	rs := ext.Tools["semgrep"].(map[string]any)["ruleset"].(adapters.Ruleset)
+	if len(rs.SHA256) != 64 || rs.Source != "p/java" {
+		t.Fatalf("ruleset not recorded: %+v", rs)
+	}
+	if _, err := os.Stat(filepath.Join(r.OutDir, ".otrust-semgrep-rules.yaml")); !os.IsNotExist(err) {
+		t.Fatalf("ruleset file left in the evidence dir: %v", err)
 	}
 }

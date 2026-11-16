@@ -10,7 +10,14 @@ TOOLS=../tools.json   # single source of tool pins, also embedded in otrust
 SYFT=$(jq -r .syft.image $TOOLS)
 TRIVY=$(jq -r .trivy.image $TOOLS)
 SEMGREP=$(jq -r .semgrep.image $TOOLS)
-SEMGREP_CONFIG=$(jq -r .semgrep.config $TOOLS)   # shortcut: registry ruleset is not pinned by content; record/pin a ruleset digest before v1.0.0 is final
+SEMGREP_CONFIG=$(jq -r .semgrep.config $TOOLS)
+# Like otrust: fetch the registry ruleset once (uncompressed, so always the YAML encoding), record
+# its digest, and scan with that file at the container root (semgrep prefixes rule IDs with its dir).
+# The rules may not be redistributed, so the file is deleted afterwards.
+RULES=$FX/.semgrep-rules.yaml
+trap 'rm -f "$RULES"' EXIT
+curl -sSf -H 'Accept-Encoding: identity' "https://semgrep.dev/c/$SEMGREP_CONFIG" -o "$RULES"
+echo "semgrep ruleset $SEMGREP_CONFIG sha256:$(shasum -a 256 "$RULES" | cut -d' ' -f1)"
 
 run() { docker run --rm --platform "linux/$(uname -m | sed s/x86_64/amd64/)" -v "$FX:/fx" -v otrust-cache:/cache "$@"; }
 
@@ -31,7 +38,7 @@ for c in clean vulnerable; do
   run -e TRIVY_CACHE_DIR=/cache/trivy "$TRIVY" sbom --quiet --format json "/fx/$out/sbom.cdx.json" > "$out/vulns.json"
   run -e TRIVY_CACHE_DIR=/cache/trivy "$TRIVY" fs --quiet --offline-scan --scanners secret --format json "/fx/src/$c/app" > "$out/secrets.json"
   # semgrep exits 1 when it has findings; that is a result, not an error
-  run -e SEMGREP_SEND_METRICS=off "$SEMGREP" semgrep scan --metrics=off --quiet --json --config "$SEMGREP_CONFIG" "/fx/src/$c/app" > "$out/sast.json" || [ $? -eq 1 ]
+  run -e SEMGREP_SEND_METRICS=off -v "$RULES:/otrust-semgrep-rules.yaml:ro" "$SEMGREP" semgrep scan --metrics=off --quiet --json --config /otrust-semgrep-rules.yaml "/fx/src/$c/app" > "$out/sast.json" || [ $? -eq 1 ]
 
   # The exact policy input otrust will build: raw tool outputs verbatim under .evidence,
   # plus the values otrust computes itself (subject binding, provenance status).
