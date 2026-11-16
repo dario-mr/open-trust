@@ -26,11 +26,11 @@ A sample `trust.yaml` that accepts only the Open Trust assessor at a pinned vers
 ```yaml
 minTrustLevel: L1+isolated-assessor
 signers:
-  - name: Acme svc, via the Open Trust assessor v0.1.3
+  - name: Acme svc, via the Open Trust assessor v0.1.4
     issuer: https://token.actions.githubusercontent.com
     sourceRepo: https://github.com/acme/svc
     sourceRef: refs/heads/main
-    buildSigner: ^https://github\.com/dario-mr/open-trust/\.github/workflows/assess\.yml@<commit of v0.1.3>$
+    buildSigner: ^https://github\.com/dario-mr/open-trust/\.github/workflows/assess\.yml@<commit of v0.1.4>$
     requireHostedRunner: true
 ```
 
