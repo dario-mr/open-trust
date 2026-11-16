@@ -17,9 +17,13 @@ The vendor side lives in a separate repository, **[dario-mr/open-trust-demo](htt
 | Key-signed (`L1`), any CI | `otrust keygen --out vendor` then `otrust assess --key vendor.key --image img.oci.tar --source .` |
 | Keyless (`L1+ci-identity`), GitHub Actions, GitLab CI (`ci-templates/gitlab/otrust.gitlab-ci.yml`), or any CI exposing `SIGSTORE_ID_TOKEN` | `otrust assess --keyless --image img.oci.tar --source .` |
 | Reusable workflow (GitHub), `L1+isolated-assessor` when called from another repository | `uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>` (see the header of [assess.yml](.github/workflows/assess.yml)) |
-| Customer | `otrust verify cert.sigstore.json --image img.oci.tar --trust-policy trust.yaml [--trusted-root root.json] [--evidence dir] [--revocations file]` |
+| Customer | `otrust verify cert.sigstore.json --image img.oci.tar --trust-policy trust.yaml [--trusted-root root.json] [--evidence dir] [--revocations file] [--online]` |
 
 The scanners run in pinned containers, so Docker is required on the assessing side.
+
+**Releases.** [`release.yml`](.github/workflows/release.yml) builds `otrust` on a version tag and attests its build provenance. Check a downloaded binary with `gh attestation verify otrust-linux-amd64 -R dario-mr/open-trust`. The assessors build `otrust` the same way, so a certificate's `agentDigest` is the digest of the released linux/amd64 binary for that revision.
+
+**Revocation.** [`trust/revocations.json`](trust/revocations.json) lists revoked artifacts, `otrust` binaries (by digest) and signers. [`revocations.yml`](.github/workflows/revocations.yml) signs it, re-signs it weekly and publishes it as an asset of the [`revocations`](https://github.com/dario-mr/open-trust/releases/tag/revocations) release. `verify --online` fetches that list, accepts it only if this workflow signed it on `main`, and only until it expires 14 days later. That fetch is the only network access `verify` makes. Without `--online`, verification runs fully offline: `--revocations` takes a downloaded signed list or your own plain list.
 
 ## Repository
 

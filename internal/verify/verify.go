@@ -3,7 +3,6 @@
 package verify
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"crypto/sha256"
@@ -61,7 +60,8 @@ type Options struct {
 	TrustPolicy string // required: who the customer trusts
 	Evidence    string // optional: evidence dir shared by the vendor
 	TrustedRoot string // Sigstore trusted_root.json; required for certificate-signed bundles
-	Revocations string // optional revocations.json
+	Revocations string // optional: your own revocations.json, or a downloaded signed list
+	Online      bool   // fetch the signed Open Trust revocation list (RevocationsURL)
 	Now         time.Time
 }
 
@@ -220,16 +220,41 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	}
 
 	// 5. revocation and expiry
+	if o.Revocations == "" && !o.Online {
+		r.Notes = append(r.Notes, "no revocation list given: revocation not checked (use --online)")
+	}
+	tm := func() (root.TrustedMaterial, error) {
+		if o.TrustedRoot != "" {
+			return root.NewTrustedRootFromPath(o.TrustedRoot)
+		}
+		if o.Online {
+			return root.FetchTrustedRoot()
+		}
+		return nil, errors.New("a signed revocation list needs --trusted-root (or --online)")
+	}
+	var lists []*revocationList
 	if o.Revocations != "" {
-		why, err := revoked(o.Revocations, r.SubjectDigest, p.Ext.AgentDigest["sha256"], r.SignerIdentity)
+		rl, note, err := loadRevocations(o.Revocations, tm, now)
 		if err != nil {
 			return nil, err
 		}
-		if why != "" {
+		lists, r.Notes = append(lists, rl), append(r.Notes, note)
+	}
+	if o.Online {
+		b, err := fetchRevocations(RevocationsURL)
+		if err != nil {
+			return nil, err
+		}
+		rl, note, err := signedRevocations(b, tm, now)
+		if err != nil {
+			return nil, err
+		}
+		lists, r.Notes = append(lists, rl), append(r.Notes, note)
+	}
+	for _, rl := range lists {
+		if why := rl.match(r.SubjectDigest, p.Ext.AgentDigest["sha256"], r.SignerIdentity); why != "" {
 			return r.fail(Revoked, "%s", why), nil
 		}
-	} else {
-		r.Notes = append(r.Notes, "no revocation list given: revocation not checked")
 	}
 	until, err := time.Parse(time.RFC3339, p.Ext.ValidUntil)
 	if err != nil {
@@ -316,37 +341,4 @@ func checkEvidence(ctx context.Context, dir, subjectDigest string, p *Predicate)
 		return EvidenceMismatch, "re-evaluating the evidence disagrees with the certificate: " + strings.Join(diffs, "; "), nil
 	}
 	return OK, "", nil
-}
-
-// revocations.json: {"revoked": [{"subject"|"agentDigest"|"signer": "...", "reason": "..."}]}
-// shortcut: unsigned local file; the signed, published list is week 5.
-func revoked(path, subjectDigest, agentDigest, signerID string) (string, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
-	}
-	var rl struct {
-		Revoked []struct {
-			Subject     string `json:"subject"`
-			AgentDigest string `json:"agentDigest"`
-			Signer      string `json:"signer"`
-			Reason      string `json:"reason"`
-		} `json:"revoked"`
-	}
-	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&rl); err != nil {
-		return "", fmt.Errorf("%s: %w", path, err)
-	}
-	for _, e := range rl.Revoked {
-		switch {
-		case e.Subject != "" && e.Subject == subjectDigest:
-			return "artifact " + subjectDigest + " revoked: " + e.Reason, nil
-		case e.AgentDigest != "" && e.AgentDigest == agentDigest:
-			return "assessment agent sha256:" + agentDigest + " revoked: " + e.Reason, nil
-		case e.Signer != "" && e.Signer == strings.TrimPrefix(signerID, "key "): // key hint or certificate SAN
-			return "signer " + signerID + " revoked: " + e.Reason, nil
-		}
-	}
-	return "", nil
 }

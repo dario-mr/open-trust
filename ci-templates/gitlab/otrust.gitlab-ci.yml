@@ -37,7 +37,7 @@
     - apk add --no-cache docker-cli git
     - git clone --quiet https://github.com/dario-mr/open-trust.git /opt/open-trust
     - git -C /opt/open-trust -c advice.detachedHead=false checkout --quiet "$OTRUST_REF"
-    - (cd /opt/open-trust && go build -trimpath -o /usr/local/bin/otrust ./cmd/otrust)
+    - (cd /opt/open-trust && CGO_ENABLED=0 go build -trimpath -o /usr/local/bin/otrust ./cmd/otrust)
     - for i in 1 2 3 4 5 6 7 8 9 10; do docker info >/dev/null 2>&1 && break; sleep 3; done
   script:
     - |

@@ -1,0 +1,52 @@
+# Sign and publish the Open Trust revocation list. The verifier (`otrust verify --online`) accepts it
+# only when signed by this workflow on main, and only until its validUntil, so it is re-signed weekly:
+# an old copy cannot hide a later revocation for more than 14 days.
+#
+# Entries (trust/revocations.json): {"subject": "sha256:…"} an artifact, {"agentDigest": "<hex>"} an
+# otrust binary, {"signer": "<SAN or key hint>"} a signer; each with a "reason".
+name: revocations
+
+on:
+  push:
+    branches: [main]
+    paths: [trust/revocations.json, .github/workflows/revocations.yml]
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency: revocations
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write     # the "revocations" release asset
+      id-token: write     # keyless signature
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the predicate
+        run: |
+          jq -e --arg until "$(date -u -d '+14 days' +%Y-%m-%dT%H:%M:%SZ)" \
+            '{validUntil: $until, revoked: .revoked}' trust/revocations.json > predicate.json
+          cat predicate.json
+      - name: Sign
+        id: sign
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: trust/revocations.json
+          predicate-type: https://open-trust.dev/revocations/v0.1
+          predicate-path: predicate.json
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "${{ steps.sign.outputs.bundle-path }}" revocations.sigstore.json
+          gh release view revocations --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create revocations --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "Revocation list" --notes "Signed Open Trust revocation list, re-signed weekly. Used by \`otrust verify --online\`."
+          gh release upload revocations revocations.sigstore.json --repo "$GITHUB_REPOSITORY" --clobber

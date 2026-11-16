@@ -175,7 +175,8 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.TrustPolicy, "trust-policy", "", "trust.yaml listing the signers you accept (required)")
 	fs.StringVar(&o.Evidence, "evidence", "", "evidence directory shared by the vendor: re-checks digests and re-runs the policy")
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (needed for keyless/CI-signed certificates)")
-	fs.StringVar(&o.Revocations, "revocations", "", "revocations.json")
+	fs.StringVar(&o.Revocations, "revocations", "", "revocations.json: your own list, or a downloaded signed Open Trust list")
+	fs.BoolVar(&o.Online, "online", false, "fetch the signed Open Trust revocation list (the only network access)")
 	// flags may follow the positional certificate path
 	var pos []string
 	for len(args) > 0 {

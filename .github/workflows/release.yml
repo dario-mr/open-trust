@@ -1,0 +1,60 @@
+# Release otrust: build the binaries on a version tag, attest their build provenance (Sigstore,
+# keyless) and publish them. The build command is the one the assessors use (assess.yml, the GitLab
+# template), so the linux/amd64 digest a certificate records as agentDigest is the released binary's.
+# workflow_dispatch builds and attests without publishing a release.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write     # create the release
+      id-token: write     # sign the provenance
+      attestations: write # store it in GitHub's attestation API
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false # a release build starts clean
+      - name: Build
+        run: |
+          set -euo pipefail
+          mkdir dist
+          for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+            CGO_ENABLED=0 GOOS=${t%/*} GOARCH=${t#*/} go build -trimpath -o "dist/otrust-${t%/*}-${t#*/}" ./cmd/otrust
+          done
+          (cd dist && sha256sum otrust-* > SHA256SUMS && cat SHA256SUMS)
+      - name: Check the version matches the tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          v=$(dist/otrust-linux-amd64 version)
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "::error::otrust version $v does not match tag $GITHUB_REF_NAME"; exit 1; }
+      - name: Attest build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/otrust-*
+      - run: cp "${{ steps.attest.outputs.bundle-path }}" dist/otrust.provenance.sigstore.json
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "otrust $GITHUB_REF_NAME" \
+            --notes "Verify a binary: \`gh attestation verify otrust-<os>-<arch> -R $GITHUB_REPOSITORY --signer-workflow $GITHUB_REPOSITORY/.github/workflows/release.yml\`"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with:
+          name: otrust-dist
+          path: dist/
+          if-no-files-found: error
