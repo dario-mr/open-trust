@@ -1,0 +1,22 @@
+# Action and Go module pins. cooldown keeps the rule that a pinned release is at least 2 weeks old.
+# Scanner images live in tools.json, which Dependabot can't read; maintenance.yml covers those.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    groups:
+      go:
+        patterns: ["*"]

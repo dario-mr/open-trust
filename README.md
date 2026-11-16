@@ -29,6 +29,8 @@ The scanners run in pinned containers, so Docker is required on the assessing si
 
 **Revocation.** [`trust/revocations.json`](trust/revocations.json) lists revoked artifacts, `otrust` binaries (by digest) and signers. [`revocations.yml`](.github/workflows/revocations.yml) signs it, re-signs it weekly and publishes it as an asset of the [`revocations`](https://github.com/dario-mr/open-trust/releases/tag/revocations) release. `verify --online` fetches that list, accepts it only if this workflow signed it on `main`, and only until it expires 14 days later. That fetch is the only network access `verify` makes. Without `--online`, verification runs fully offline: `--revocations` takes a downloaded signed list or your own plain list.
 
+**Maintenance.** [`maintenance.yml`](.github/workflows/maintenance.yml) keeps the re-signing schedule enabled, fails a week before the published list would expire, and opens an issue when a pinned scanner has a release at least two weeks old. If the list ever expires, re-sign it with `gh workflow enable revocations.yml && gh workflow run revocations.yml`.
+
 ## Repository
 
 `cmd/otrust` · `internal/` (subject, ci, adapters, policy, statement, signer, trustlevel, verify) · `profiles/supply-chain-baseline/v1` (spec, Rego policy, real-output fixtures) · [poc-plan.md](poc-plan.md) · [research/](research/)

@@ -1,0 +1,73 @@
+# Weekly upkeep. A failure of a scheduled run notifies the maintainer by GitHub notification/email.
+# 1. Keep the scheduled workflows enabled: GitHub disables them after 60 days without repository
+#    activity, which would stop the revocation list being re-signed and, 14 days later, make every
+#    `otrust verify --online` fail. Re-enabling through the API resets that counter.
+#    shortcut: the reset is community-reported, not documented by GitHub; step 2 catches it if
+#    it stops working, so switch to a keep-alive commit if that check ever fires for this reason.
+# 2. Check the published revocation list as buyers fetch it: signed by revocations.yml on main, of
+#    the current trust/revocations.json, and valid for at least another 7 days.
+# 3. Open an issue when a scanner pinned in tools.json has a release at least 14 days old.
+name: maintenance
+
+on:
+  schedule:
+    - cron: "41 5 * * 3"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  upkeep:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write   # re-enable workflows
+      issues: write    # scanner update issue
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Keep scheduled workflows enabled
+        run: |
+          for wf in revocations.yml maintenance.yml; do
+            gh api -X PUT "repos/$REPO/actions/workflows/$wf/enable"
+          done
+      - name: Check the published revocation list
+        run: |
+          gh release download revocations --repo "$REPO" -p revocations.sigstore.json -D "$RUNNER_TEMP"
+          until=$(gh attestation verify trust/revocations.json --bundle "$RUNNER_TEMP/revocations.sigstore.json" \
+            --repo "$REPO" --predicate-type https://open-trust.dev/revocations/v0.1 \
+            --cert-identity "https://github.com/$REPO/.github/workflows/revocations.yml@refs/heads/main" \
+            --format json | jq -r '.[0].verificationResult.statement.predicate.validUntil')
+          echo "valid until $until"
+          if [ "$(date -u -d "$until" +%s)" -lt "$(date -u -d '+7 days' +%s)" ]; then
+            echo "::error::revocation list expires $until; run: gh workflow run revocations.yml"
+            exit 1
+          fi
+      - name: Look for scanner updates
+        run: |
+          cutoff=$(date -u -d '-14 days' +%Y-%m-%dT%H:%M:%SZ)
+          body=""
+          for t in syft:anchore/syft trivy:aquasecurity/trivy semgrep:semgrep/semgrep opa:open-policy-agent/opa; do
+            tool=${t%%:*} gh=${t#*:}
+            pinned=$(jq -r --arg t "$tool" '.[$t].version' profiles/supply-chain-baseline/v1/tools.json)
+            # newest non-prerelease published before the cutoff (the 2-week rule for pins)
+            latest=$(gh api "repos/$gh/releases?per_page=50" --jq "[.[] | select(.prerelease|not) | select(.published_at < \"$cutoff\")][0].tag_name")
+            latest=${latest#v}
+            if [ -n "$latest" ] && [ "$latest" != "$pinned" ] &&
+               [ "$(printf '%s\n%s\n' "$pinned" "$latest" | sort -V | tail -1)" = "$latest" ]; then
+              body+="- $tool: $pinned → $latest (https://github.com/$gh/releases/tag/v$latest)"$'\n'
+            fi
+          done
+          echo "${body:-all scanner pins current}"
+          [ -n "$body" ] || exit 0
+          body+=$'\nTo update: put the version and multi-arch index digest in profiles/supply-chain-baseline/v1/tools.json, '
+          body+=$'review the release notes for in-tree configuration the scanner now honours (profile.md §9), '
+          body+=$'regenerate the fixtures, and release a new otrust (the pins are embedded).'
+          title="Scanner updates available"
+          n=$(gh issue list --repo "$REPO" --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$n" ]; then gh issue edit "$n" --repo "$REPO" --body "$body"
+          else gh issue create --repo "$REPO" --title "$title" --body "$body"; fi
