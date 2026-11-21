@@ -2,6 +2,8 @@
 # accepts the Open Trust assessor at a release tag, assessing this repository on a GitHub-hosted runner.
 # The assessor and the source share this repository, so the level is ci-identity, not isolated-assessor.
 minTrustLevel: L1+ci-identity
+# needs otrust v0.1.10+ to read; 0.1.8 is the first assessor with SAST rules for every language
+minAgentVersion: 0.1.8
 signers:
   - name: otrust release, self-assessed
     issuer: https://token.actions.githubusercontent.com
