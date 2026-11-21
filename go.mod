@@ -4,9 +4,9 @@ go 1.27.4
 
 require (
 	github.com/google/go-containerregistry v0.22.1
-	github.com/open-policy-agent/opa v1.22.0
+	github.com/open-policy-agent/opa v1.22.2
 	github.com/sigstore/protobuf-specs v0.5.2
-	github.com/sigstore/sigstore v1.11.1
+	github.com/sigstore/sigstore v1.11.3
 	github.com/sigstore/sigstore-go v1.4.0
 	github.com/sigstore/sigstore/pkg/signature/kms/aws v1.11.3
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.11.3
