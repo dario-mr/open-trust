@@ -5,7 +5,8 @@ package otrust.scb.v1
 
 import rego.v1
 
-profile := {"id": "supply-chain-baseline", "version": "1.0.0"}
+# 1.1.0: SAST warns about languages the ruleset has no rules for. 1.0.0 is kept as policy-1.0.0.rego.
+profile := {"id": "supply-chain-baseline", "version": "1.1.0"}
 
 required_checks := ["sbom", "vulns", "secrets", "sast", "provenance", "subject_binding"]
 
@@ -91,6 +92,19 @@ sast_level := {"ERROR": "fail", "WARNING": "warn"}
 findings.sast contains {"key": "scan-errors", "level": "warn", "message": sprintf("semgrep reported %d scan error(s)", [n])} if {
 	n := count(object.get(input.evidence.sast, "errors", []))
 	n > 0
+}
+
+# A language with scanned files but no rules in the ruleset was not analysed: say so instead of passing
+# silently. otrust computes input.sast_coverage from semgrep's scanned paths and the fetched ruleset.
+findings.sast contains f if {
+	some c in object.get(input, "sast_coverage", [])
+	c.files > 0
+	c.rules == 0
+	f := {
+		"key": sprintf("no-rules:%s", [c.language]),
+		"level": "warn",
+		"message": sprintf("no SAST rules for %s (%d files): not analysed", [c.language, c.files]),
+	}
 }
 
 # provenance (computed by otrust from the provenance attestation)

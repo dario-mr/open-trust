@@ -373,3 +373,27 @@ func TestMinAgentVersion(t *testing.T) {
 		t.Error("a minAgentVersion that is not a version must be refused")
 	}
 }
+
+// Certificates name their policy by digest: one issued under profile 1.0.0 still verifies, and its
+// evidence re-evaluates under 1.0.0, after the current policy moved on.
+func TestOlderPolicyVersionStillVerifies(t *testing.T) {
+	old := sha(mustRead(t, "../../profiles/supply-chain-baseline/v1/policy-1.0.0.rego"))
+	if old == scb.PolicyDigest() {
+		t.Fatal("policy 1.0.0 should differ from the current policy")
+	}
+	c := newCert(t, "clean", func(p map[string]any, _ *statement.Extension) {
+		p["policy"] = map[string]any{"uri": "https://open-trust.dev/profiles/supply-chain-baseline/1.0.0", "digest": statement.Digest{"sha256": old}}
+	})
+	if r := run(t, c.opts); r.Code != OK || !r.EvidenceChecked {
+		t.Fatalf("got %s (%s), evidence checked %v", r.Code, r.Reason, r.EvidenceChecked)
+	}
+}
+
+func mustRead(t *testing.T, p string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}

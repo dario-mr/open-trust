@@ -23,19 +23,30 @@ type Context struct {
 	Subject    SubjectIn   `json:"subject"`
 	Provenance Provenance  `json:"provenance"`
 	Exceptions []Exception `json:"exceptions"`
+	// SASTCoverage is absent from profile 1.0.0 contexts; omitempty keeps their digests unchanged.
+	SASTCoverage []LanguageCoverage `json:"sast_coverage,omitempty"`
+}
+
+// LanguageCoverage: Files source files in Language were scanned, and the ruleset has Rules rules for it.
+type LanguageCoverage struct {
+	Language string `json:"language"`
+	Files    int    `json:"files"`
+	Rules    int    `json:"rules"`
 }
 
 func (c Context) Input(ev EvidenceIn) *Input {
-	return &Input{Now: c.Now, Subject: c.Subject, Provenance: c.Provenance, Evidence: ev, Exceptions: c.Exceptions}
+	return &Input{Now: c.Now, Subject: c.Subject, Provenance: c.Provenance, Evidence: ev, Exceptions: c.Exceptions,
+		SASTCoverage: c.SASTCoverage}
 }
 
 // Input is the document described in profile.md §4.
 type Input struct {
-	Now        string      `json:"now"`
-	Subject    SubjectIn   `json:"subject"`
-	Provenance Provenance  `json:"provenance"`
-	Evidence   EvidenceIn  `json:"evidence"`
-	Exceptions []Exception `json:"exceptions"`
+	Now          string             `json:"now"`
+	Subject      SubjectIn          `json:"subject"`
+	Provenance   Provenance         `json:"provenance"`
+	Evidence     EvidenceIn         `json:"evidence"`
+	Exceptions   []Exception        `json:"exceptions"`
+	SASTCoverage []LanguageCoverage `json:"sast_coverage,omitempty"`
 }
 
 type SubjectIn struct {
@@ -110,8 +121,13 @@ func LoadExceptions(path string) ([]Exception, error) {
 
 func NowRFC3339() string { return time.Now().UTC().Format(time.RFC3339) }
 
-// Evaluate runs the embedded policy over the input exactly as the verifier will.
+// Evaluate runs the current embedded policy over the input exactly as the verifier will.
 func Evaluate(ctx context.Context, in *Input) (*Decision, error) {
+	return EvaluateWith(ctx, scb.Policy, in)
+}
+
+// EvaluateWith runs a given version of the profile's policy (scb.PolicyByDigest).
+func EvaluateWith(ctx context.Context, policy []byte, in *Input) (*Decision, error) {
 	raw, err := json.Marshal(in)
 	if err != nil {
 		return nil, err
@@ -124,7 +140,7 @@ func Evaluate(ctx context.Context, in *Input) (*Decision, error) {
 	}
 	rs, err := rego.New(
 		rego.Query(scb.Query),
-		rego.Module("policy.rego", string(scb.Policy)),
+		rego.Module("policy.rego", string(policy)),
 		rego.Input(doc),
 		rego.StrictBuiltinErrors(true),
 	).Eval(ctx)

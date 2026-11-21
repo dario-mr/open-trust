@@ -160,3 +160,31 @@ test_provenance_for_another_artifact_fails if {
 	check_result(d, "provenance") == "FAILED"
 	d.result == "FAILED"
 }
+
+# ---- 1.1.0: SAST coverage
+
+test_uncovered_language_warns_but_does_not_fail if {
+	inp := object.union(clean, {"sast_coverage": [
+		{"language": "go", "files": 19, "rules": 84},
+		{"language": "cpp", "files": 3, "rules": 0},
+	]})
+	d := decide(inp)
+	d.result == "PASSED"
+	check_result(d, "sast") == "WARN"
+	some c in d.checks
+	c.id == "sast"
+	"no SAST rules for cpp (3 files): not analysed" in c.findings
+}
+
+test_covered_languages_stay_silent if {
+	d := decide(object.union(clean, {"sast_coverage": [{"language": "java", "files": 1, "rules": 118}]}))
+	check_result(d, "sast") == "PASSED"
+}
+
+test_uncovered_language_can_be_excepted if {
+	inp := object.union(clean, {
+		"sast_coverage": [{"language": "cpp", "files": 3, "rules": 0}],
+		"exceptions": [{"check": "sast", "id": "no-rules:cpp", "reason": "vendored third-party C++, reviewed separately", "expires": future}],
+	})
+	check_result(decide(inp), "sast") == "PASSED"
+}

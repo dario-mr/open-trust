@@ -133,7 +133,7 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 		return r, err
 	}
 	p := r.Predicate
-	if p.Policy.Digest["sha256"] != scb.PolicyDigest() {
+	if scb.PolicyByDigest(p.Policy.Digest["sha256"]) == nil {
 		return r.fail(PolicyUnknown, "policy %s (sha256:%s) is not the profile this verifier knows", p.Policy.URI, p.Policy.Digest["sha256"]), nil
 	}
 
@@ -302,7 +302,8 @@ func checkEvidence(ctx context.Context, dir, subjectDigest string, p *Predicate)
 		}
 		ev[c.ID] = b
 	}
-	dec, err := policy.Evaluate(ctx, pc.Input(policy.EvidenceIn{SBOM: ev["sbom"], Vulns: ev["vulns"], Secrets: ev["secrets"], SAST: ev["sast"]}))
+	// the policy version the certificate was issued under (known: checked in step 2)
+	dec, err := policy.EvaluateWith(ctx, scb.PolicyByDigest(p.Policy.Digest["sha256"]), pc.Input(policy.EvidenceIn{SBOM: ev["sbom"], Vulns: ev["vulns"], Secrets: ev["secrets"], SAST: ev["sast"]}))
 	if err != nil {
 		return "", "", err
 	}

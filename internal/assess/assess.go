@@ -139,10 +139,11 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 
 	now := time.Now().UTC().Truncate(time.Second)
 	pctx := policy.Context{
-		Now:        now.Format(time.RFC3339),
-		Subject:    policy.SubjectIn{Digest: subj.Digest, AssessedDigest: subj.Digest},
-		Provenance: prov,
-		Exceptions: exceptions,
+		Now:          now.Format(time.RFC3339),
+		Subject:      policy.SubjectIn{Digest: subj.Digest, AssessedDigest: subj.Digest},
+		Provenance:   prov,
+		Exceptions:   exceptions,
+		SASTCoverage: adapters.SASTCoverage(ev.SAST, ev.SemgrepRuleset.Languages),
 	}
 	ctxJSON, err := json.MarshalIndent(pctx, "", "  ")
 	if err != nil {

@@ -61,6 +61,8 @@ type Ruleset struct {
 	SHA256  string `json:"sha256"`
 	Fetched string `json:"fetched"`
 	Rules   int    `json:"rules"`
+	// Languages counts the rules per language (aliases folded, see ruleLanguage); for SAST coverage.
+	Languages map[string]int `json:"-"`
 }
 
 const rulesFile = ".otrust-semgrep-rules.yaml" // in WorkDir during the scan only
@@ -91,12 +93,20 @@ func fetchRuleset(ctx context.Context, source string) ([]byte, Ruleset, error) {
 		return nil, rs, err
 	}
 	var doc struct {
-		Rules []yaml.Node `yaml:"rules"`
+		Rules []struct {
+			Languages []string `yaml:"languages"`
+		} `yaml:"rules"`
 	}
 	if yaml.Unmarshal(b, &doc) != nil || len(doc.Rules) == 0 {
 		return nil, rs, fmt.Errorf("semgrep ruleset %s: not a rules document", rs.URL)
 	}
 	rs.Rules = len(doc.Rules)
+	rs.Languages = map[string]int{}
+	for _, r := range doc.Rules {
+		for _, l := range r.Languages {
+			rs.Languages[ruleLanguage(l)]++
+		}
+	}
 	sum := sha256.Sum256(b)
 	rs.SHA256 = hex.EncodeToString(sum[:])
 	return b, rs, nil

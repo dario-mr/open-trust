@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Profile ID | `supply-chain-baseline` |
-| Version | `1.0.0` (draft) |
+| Version | `1.1.0` (draft). `1.0.0` is kept byte for byte as [`policy-1.0.0.rego`](policy-1.0.0.rego): certificates name their policy by digest, and `otrust verify` accepts and re-evaluates both. 1.1.0 adds the SAST coverage warning (§5). |
 | VSA level | `OPENTRUST_SCB_V1` |
 | Policy | [`policy.rego`](policy.rego), package `otrust.scb.v1`, result at `data.otrust.scb.v1.decision`. The certificate records its SHA-256. |
 | Conformance | [`fixtures/`](fixtures/), with expected results in [fixtures/README.md](fixtures/README.md). Run with `./test.sh`. |
@@ -15,7 +15,7 @@ For the exact artifact digest in the certificate subject:
 1. An SBOM was generated **from the artifact itself**, and the SBOM is not empty.
 2. That SBOM was scanned for known vulnerabilities. None are CRITICAL, and none are HIGH with a fix available, except those listed as exceptions.
 3. The source revision was scanned for exposed secrets, and none were found, except those listed as exceptions.
-4. The source was scanned with static analysis, and no ERROR-severity findings remain, except those listed as exceptions.
+4. The source was scanned with static analysis, and no ERROR-severity findings remain, except those listed as exceptions. Since 1.1.0, every scanned source language the ruleset has **no** rules for is named in a WARN, so a language that was not analysed never passes silently.
 5. Build provenance exists for the artifact, and its subject matches the artifact.
 6. The artifact digest that was assessed is the digest the certificate is about. It is the image manifest digest, whether the image came from an OCI layout or from a registry by digest.
 7. All of the above used the tool versions and this policy version, as recorded in the certificate. The SAST ruleset is the registry's current one, recorded by digest (§9).
@@ -62,7 +62,9 @@ The agent builds one JSON document. [`fixtures/inputs/*/input.json`](fixtures/in
   "evidence": {                            // raw tool output, verbatim
     "sbom": {…}, "vulns": {…}, "secrets": {…}, "sast": {…}
   },
-  "exceptions": [ { "check": "…", "id": "…", "reason": "…", "expires": "RFC 3339" } ]
+  "exceptions": [ { "check": "…", "id": "…", "reason": "…", "expires": "RFC 3339" } ],
+  // 1.1.0: per language among the files semgrep scanned, the files and the ruleset's rules for it
+  "sast_coverage": [ { "language": "cpp", "files": 4, "rules": 0 } ]
 }
 ```
 
@@ -77,7 +79,7 @@ All six checks are required, and each one yields PASSED, WARN or FAILED.
 | `sbom` | evidence missing; not CycloneDX; zero components | — |
 | `vulns` | evidence missing; scan not run on the CycloneDX SBOM (`ArtifactType != cyclonedx`); any **CRITICAL**; any **HIGH with a `FixedVersion`** | HIGH with no fix available |
 | `secrets` | evidence missing; **any** secret finding | — |
-| `sast` | evidence missing; any Semgrep **ERROR** | any Semgrep WARNING; Semgrep reported scan errors (partial coverage) |
+| `sast` | evidence missing; any Semgrep **ERROR** | any Semgrep WARNING; Semgrep reported scan errors (partial coverage); a scanned language with no rules in the ruleset (`no-rules:<language>`, which an exception can accept) |
 | `provenance` | not present; subject doesn't match the artifact | present but unsigned; signer not in the trust policy |
 | `subject_binding` | digest missing; assessed digest ≠ certificate subject digest | — |
 
@@ -119,7 +121,7 @@ This profile's rules are identical at every level. Only how far a buyer can trus
 ## 8. Validity and versioning
 
 - A certificate is valid for **30 days** from `timeVerified`. Vulnerability data ages, so re-assess at least monthly.
-- A new profile version **never** changes an old certificate's result. Verifiers may require a minimum profile version.
+- A new profile version **never** changes an old certificate's result. `otrust` embeds every released policy version and verifies (and with `--evidence` re-evaluates) a certificate under the version it names by digest. Verifiers may require a minimum profile version.
 - Patch version: wording or bug fixes that don't change any decision on the conformance fixtures. Minor version: new WARN conditions. Major version: any new FAIL condition, check or tool change.
 
 ## 9. Known gaps (v1 draft)
@@ -127,6 +129,7 @@ This profile's rules are identical at every level. Only how far a buyer can trus
 Found while generating the fixtures:
 
 - **The Semgrep ruleset is `p/default`, multi-language.** Until 2026-11-21 it was `p/java`, which gave non-Java code no SAST coverage at all: assessing otrust itself (Go) showed it. `p/default` contains every `p/java` rule under the same IDs, plus rules for Go, Python, JavaScript/TypeScript, Ruby, PHP, Terraform, Dockerfiles and more (1,073 rules on that date), so exceptions keyed by rule ID still apply. Each certificate records which ruleset it used (`tools.semgrep.ruleset.source`). The broader set is also noisier: on the demo app it flagged an `ENTRYPOINT` with no `USER` line, although the distroless base runs as non-root, fixed by stating `USER` explicitly.
+- **A language without rules used to pass silently** (fixed in 1.1.0). Semgrep's `paths.scanned` cannot show it, because generic rules touch every file. `otrust` counts the ruleset's rules per language and maps the scanned files to languages by extension (`.h` counts as C, as for Semgrep). On 2026-11-21, `p/default` had no rules for C++, Elixir, Dart, Groovy, Perl or Haskell, and only a handful for C, Rust and Swift: the warning appears only at zero.
 - **Semgrep's PartialParsing warnings are common.** GitHub workflow YAML often parses only partly. They appear as scan errors, a WARN, not a failure.
 - **The Semgrep ruleset is recorded, not pinned.** `p/default` is fetched from the Semgrep registry at run time, so every assessment uses Semgrep's current rules. Those rules may not be redistributed under the Semgrep Rules License, so a fixed snapshot can't ship with the profile. Pinning to a fixed registry fingerprint was rejected too, because every registry update would break assessments. Instead `otrust` records exactly what it used: the SHA-256 of the fetched file, the rule count and the fetch time (`tools.semgrep.ruleset`). It deletes the file after the scan. Two certificates of this profile version may therefore have used different SAST rules, and the fingerprint says whether they did.
 - **Vendor-controlled scanner configuration.** A `.semgrepignore` containing `*`, committed at any depth, made Semgrep scan zero files, which meant a vacuous SAST PASS. `otrust` now blanks every `.semgrepignore` for the scan by mounting an empty file over it read-only, and lists those files in the certificate (`tools.semgrep.neutralizedIgnoreFiles`). Other in-tree configuration that a scanner might honour has to be reviewed the same way whenever a tool is added or upgraded.
