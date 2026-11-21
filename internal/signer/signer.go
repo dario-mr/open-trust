@@ -44,11 +44,26 @@ func KeyHint(pub crypto.PublicKey) (string, error) {
 	return base64.StdEncoding.EncodeToString(sum[:]), nil
 }
 
-// KeySigner signs with a long-lived ECDSA P-256 key held by the vendor.
-// shortcut: unencrypted PEM file; KMS-backed keys (sigstore/sigstore kms) behind the same interface later.
+// KeySigner signs with a long-lived ECDSA P-256 key held by the vendor: a PEM file, or a KMS key
+// (LoadSigner) that never leaves the KMS. Key-signed bundles carry no transparency-log entry, so
+// nothing about the vendor's repository is published.
 type KeySigner struct {
-	key  *ecdsa.PrivateKey
+	pub  crypto.PublicKey
 	hint []byte
+	// sign returns an ASN.1 ECDSA signature over sha256(data)
+	sign func(ctx context.Context, data []byte) ([]byte, error)
+}
+
+func newKeySigner(pub crypto.PublicKey, sign func(context.Context, []byte) ([]byte, error)) (*KeySigner, error) {
+	ec, ok := pub.(*ecdsa.PublicKey)
+	if !ok || ec.Curve != elliptic.P256() {
+		return nil, errors.New("want an ECDSA P-256 key")
+	}
+	h, err := KeyHint(pub)
+	if err != nil {
+		return nil, err
+	}
+	return &KeySigner{pub: pub, hint: []byte(h), sign: sign}, nil
 }
 
 func LoadKey(path string) (*KeySigner, error) {
@@ -73,14 +88,17 @@ func LoadKey(path string) (*KeySigner, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	ec, ok := k.(*ecdsa.PrivateKey)
-	if !ok || ec.Curve != elliptic.P256() {
+	if !ok {
 		return nil, fmt.Errorf("%s: want an ECDSA P-256 key", path)
 	}
-	h, err := KeyHint(ec.Public())
+	s, err := newKeySigner(ec.Public(), func(_ context.Context, data []byte) ([]byte, error) {
+		digest := sha256.Sum256(data)
+		return ecdsa.SignASN1(rand.Reader, ec, digest[:])
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	return &KeySigner{key: ec, hint: []byte(h)}, nil
+	return s, nil
 }
 
 // GenerateKey writes a new P-256 key pair: <prefix>.key (0600) and <prefix>.pub.
@@ -135,13 +153,13 @@ func (s *KeySigner) GetSigningAlgorithm() protocommon.PublicKeyDetails {
 }
 func (s *KeySigner) GetHint() []byte                { return s.hint }
 func (s *KeySigner) GetKeyAlgorithm() string        { return "ECDSA" }
-func (s *KeySigner) GetPublicKey() crypto.PublicKey { return s.key.Public() }
+func (s *KeySigner) GetPublicKey() crypto.PublicKey { return s.pub }
 func (s *KeySigner) GetPublicKeyPem() (string, error) {
-	b, err := cryptoutils.MarshalPublicKeyToPEM(s.key.Public())
+	b, err := cryptoutils.MarshalPublicKeyToPEM(s.pub)
 	return string(b), err
 }
-func (s *KeySigner) SignData(_ context.Context, data []byte) ([]byte, []byte, error) {
+func (s *KeySigner) SignData(ctx context.Context, data []byte) ([]byte, []byte, error) {
 	digest := sha256.Sum256(data)
-	sig, err := ecdsa.SignASN1(rand.Reader, s.key, digest[:])
+	sig, err := s.sign(ctx, data)
 	return sig, digest[:], err
 }

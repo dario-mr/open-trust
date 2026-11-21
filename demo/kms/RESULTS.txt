@@ -1,0 +1,78 @@
+
+[1m== Vendor: a Vault transit key (ecdsa-p256) that never leaves Vault[0m
+key hashivault://otrust created
+
+[1m== Vendor: export the public key for buyers[0m
+key hint XOiBIZzkg/nSRnjoaki4xnJCm8TIQkdKejc9FiWdxA8=
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkVwYmSN+UynKpU/vTWQGulLbuqsw
+eZ3HDloQV66ylg5nGZCjp4AuYKpWBVcxJ2j+GgTSX9Ju4WG5RvO71bnNnQ==
+-----END PUBLIC KEY-----
+
+[1m== Vendor: assess, signing through Vault[0m
+  Subject   sha256:c1ee6df896655b7b9996276fdb3b53f529c656bd369c90b2bea7082e58300ef0
+  Source    /Users/dmauri/Repo/open-trust @ 12e0e62faa0468a807529fcef26d4044a43d29f6 (generic)
+  Profile   supply-chain-baseline 1.0.0
+  
+  ✔ sbom             PASSED
+  ✔ vulns            PASSED
+  ✔ secrets          PASSED
+  ⚠ sast             WARN
+      - WARNING java.lang.security.audit.sqli.jdbc-sqli.jdbc-sqli at /src/profiles/supply-chain-baseline/v1/fixtures/src/vulnerable/app/Main.java:14
+      - semgrep reported 6 scan error(s)
+  ⚠ provenance       WARN
+      - provenance is not signed
+  ✔ subject_binding  PASSED
+  
+  Exceptions applied: 3
+      - secrets profiles/supply-chain-baseline/v1/fixtures/src/vulnerable/app/config/deploy.pem#private-key (expires 2027-05-21T00:00:00Z): Deliberately leaked test key in the profile's conformance fixture (the failing example); not used anywhere.
+      - sast java.lang.security.audit.formatted-sql-string.formatted-sql-string (expires 2027-05-21T00:00:00Z): The only Java in this repository is the conformance fixture's deliberate SQL injection.
+      - sast dockerfile.security.last-user-is-root.last-user-is-root (expires 2027-05-21T00:00:00Z): demo/jenkins/Dockerfile is a local test harness that runs Jenkins as root to use the host's docker socket; it is not shipped.
+  
+  Result    PASSED
+  Trust     L1
+  Output    /Users/dmauri/.cache/otrust-kms/out/certificate.sigstore.json  (give this and the image to customers)
+  Evidence  /Users/dmauri/.cache/otrust-kms/out  (stays with you; share only if you choose)
+tlog entries in the bundle: 0
+
+[1m== Buyer: verify with the vendor's public key, offline[0m
+  VERIFIED
+  You can rely on this certificate, within the limits listed under "What this does not prove".
+  
+  What this proves
+    ✔ Signed by "Acme (key in Vault)" from your trust policy (key XOiBIZzkg/nSRnjoaki4xnJCm8TIQkdKejc9FiWdxA8=)
+    ✔ For exactly this image: sha256:c1ee6df896655b7b9996276fdb3b53f529c656bd369c90b2bea7082e58300ef0
+    ✔ Built from /Users/dmauri/Repo/open-trust @ 12e0e62faa0468a807529fcef26d4044a43d29f6 (generic)
+    ✔ Assessed 2026-11-21T21:39:37Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T21:39:37Z
+    ✔ Trust level L1: whoever holds the vendor's key signed it
+    ✔ The vendor's evidence matches its digests and re-evaluates to the same results
+  
+  Checks, as the vendor's assessment reports them
+    ✔ sbom             PASSED
+    ✔ vulns            PASSED
+    ✔ secrets          PASSED
+    ⚠ sast             WARN
+        - WARNING java.lang.security.audit.sqli.jdbc-sqli.jdbc-sqli at /src/profiles/supply-chain-baseline/v1/fixtures/src/vulnerable/app/Main.java:14
+        - semgrep reported 6 scan error(s)
+    ⚠ provenance       WARN
+        - provenance is not signed
+    ✔ subject_binding  PASSED
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-21T21:39:25Z)
+  
+  Risks the vendor accepted
+    ⚠ Exception secrets profiles/supply-chain-baseline/v1/fixtures/src/vulnerable/app/config/deploy.pem#private-key (expires 2027-05-21T00:00:00Z): Deliberately leaked test key in the profile's conformance fixture (the failing example); not used anywhere.
+    ⚠ Exception sast java.lang.security.audit.formatted-sql-string.formatted-sql-string (expires 2027-05-21T00:00:00Z): The only Java in this repository is the conformance fixture's deliberate SQL injection.
+    ⚠ Exception sast dockerfile.security.last-user-is-root.last-user-is-root (expires 2027-05-21T00:00:00Z): demo/jenkins/Dockerfile is a local test harness that runs Jenkins as root to use the host's docker socket; it is not shipped.
+  
+  What this does not prove
+    - Scanners detect known vulnerabilities and pattern-matched code flaws only
+    - Does not prove the scanned source is the complete source of the artifact
+    - Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
+    - Signed with a vendor-held key: proves who signed, not which pipeline ran the assessment
+    - Anything about how or where the assessment ran: the key holder can sign any result (use --recheck)
+    - That the image's packages and vulnerabilities are as the vendor reports: run with --recheck to scan it yourself
+  
+  Notes
+    ℹ no revocation list given: revocation not checked (use --online)
+  
+  VERIFIED

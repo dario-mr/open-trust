@@ -29,6 +29,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, `usage:
   otrust keygen --out <prefix>
+  otrust pubkey --key <file|kms-uri>
   otrust assess --image <oci-layout> (--key <file> | --no-sign) [flags]
   otrust verify <certificate.sigstore.json> --image <oci-layout> --trust-policy <trust.yaml> [flags]`)
 		return 2
@@ -40,11 +41,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdVerify(ctx, args[1:], stdout, stderr)
 	case "keygen":
 		return cmdKeygen(args[1:], stdout, stderr)
+	case "pubkey":
+		return cmdPubkey(ctx, args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, assess.Version)
 		return 0
 	default:
-		fmt.Fprintf(stderr, "unknown command %q (commands: assess, verify, keygen, version)\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q (commands: assess, verify, keygen, pubkey, version)\n", args[0])
 		return 2
 	}
 }
@@ -66,6 +69,33 @@ func cmdKeygen(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// cmdPubkey prints the public key (PEM) of a signing key, e.g. one held in a KMS, for buyers' trust policies.
+func cmdPubkey(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("pubkey", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	key := fs.String("key", "", "key file, or KMS key URI (awskms://, gcpkms://, azurekms://, hashivault://)")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *key == "" {
+		fmt.Fprintln(stderr, "--key is required")
+		return 2
+	}
+	s, err := signer.LoadSigner(ctx, *key)
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", err)
+		return 2
+	}
+	pem, err := s.GetPublicKeyPem()
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", err)
+		return 2
+	}
+	fmt.Fprint(stdout, pem)
+	fmt.Fprintf(stderr, "key hint %s\n", s.GetHint())
+	return 0
+}
+
 func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("assess", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -80,7 +110,7 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Provenance, "provenance", "", "signed SLSA provenance bundle for the image (e.g. from actions/attest-build-provenance)")
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json to check --provenance (default: fetch via TUF)")
 	noSign := fs.Bool("no-sign", false, "write an unsigned statement only (local testing)")
-	keyPath := fs.String("key", "", "sign with this ECDSA P-256 private key (trust level L1); see `otrust keygen`")
+	keyPath := fs.String("key", "", "sign with an ECDSA P-256 key (trust level L1): a key file (see `otrust keygen`) or a KMS key URI (awskms://, gcpkms://, azurekms://, hashivault://)")
 	keyless := fs.Bool("keyless", false, "sign with the CI's OIDC identity via Sigstore (Fulcio + Rekor)")
 	fulcioURL := fs.String("fulcio-url", signer.PublicGoodFulcio, "Fulcio URL for --keyless")
 	rekorURL := fs.String("rekor-url", signer.PublicGoodRekor, "Rekor URL for --keyless")
@@ -104,7 +134,7 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 	switch {
 	case *keyPath != "":
-		s, err := signer.LoadKey(*keyPath)
+		s, err := signer.LoadSigner(ctx, *keyPath)
 		if err != nil {
 			fmt.Fprintln(stderr, "otrust:", err)
 			return 2
