@@ -1,8 +1,8 @@
 
-[1m== Setup: the released otrust v0.1.8 for the buyer, checked against its build provenance[0m
+[1m== Setup: the released otrust v0.1.9 for the buyer, checked against its build provenance[0m
 
 [1m== Vendor: a signing key, stored in Jenkins as a secret file credential[0m
-wrote vendor.key and vendor.pub (key hint YZktZ/qWaMYjGsXoZEjrycNtM0h5/X4WWWU9gFRBRQE=)
+wrote vendor.key and vendor.pub (key hint XfrG+Ks7MpCtcJpVjSr0TIiiwVYjXkVg2GOUDnNHzuk=)
 give vendor.pub to customers for their trust policy; keep vendor.key secret
 
 [1m== Vendor: start Jenkins 2.580.2-lts-jdk21[0m
@@ -31,10 +31,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
    > git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origin/* # timeout=10
   Avoid second fetch
    > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
-  Checking out Revision a96cf7b41d49060dc9edf3bc68c750dfb57ad297 (refs/remotes/origin/main)
+  Checking out Revision 593458882148c0dcf8d25ce635cb0c0c19b7b83f (refs/remotes/origin/main)
    > git config core.sparsecheckout # timeout=10
-   > git checkout -f a96cf7b41d49060dc9edf3bc68c750dfb57ad297 # timeout=10
-  Commit message: "Assess with Open Trust v0.1.8"
+   > git checkout -f 593458882148c0dcf8d25ce635cb0c0c19b7b83f # timeout=10
+  Commit message: "Assess with Open Trust v0.1.9"
   First time build. Skipping changelog.
   [Pipeline] }
   [Pipeline] // stage
@@ -55,7 +55,7 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   #2 [internal] load metadata for gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
   #2 DONE 0.3s
   #3 [internal] load metadata for docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #3 DONE 0.7s
+  #3 DONE 0.9s
   #4 [internal] load .dockerignore
   #4 transferring context: 47B done
   #4 DONE 0.0s
@@ -68,13 +68,13 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   #7 [internal] load build context
   #7 transferring context: 2.59kB 0.0s done
   #7 DONE 0.0s
-  #8 [build 2/5] WORKDIR /src
+  #8 [build 5/5] RUN mvn -q -B -ntp package -DskipTests $([ "clean" = vulnerable ] && echo -Pvulnerable)
   #8 CACHED
   #9 [build 4/5] COPY src src
   #9 CACHED
-  #10 [build 5/5] RUN mvn -q -B -ntp package -DskipTests $([ "clean" = vulnerable ] && echo -Pvulnerable)
+  #10 [build 3/5] COPY pom.xml .
   #10 CACHED
-  #11 [build 3/5] COPY pom.xml .
+  #11 [build 2/5] WORKDIR /src
   #11 CACHED
   #12 [stage-1 2/2] COPY --from=build /src/target/app.jar /app/app.jar
   #12 CACHED
@@ -82,8 +82,8 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   #13 exporting layers done
   #13 exporting manifest sha256:fe88e4184314e081e71de8e4a7e5b19406f21dbf21318ac83de9bbe14b571b13 done
   #13 exporting config sha256:ba01e4c6e8ba73ef9ff1332ad62a82ace2e66359c79f5effdd1c9425c2c66eda done
-  #13 exporting attestation manifest sha256:62cfe996d3b8305ac1027b296eed375463632afbec1deb962fb55985c6e30d0d done
-  #13 exporting manifest list sha256:d967f877d93f13cbbe31710eb2c639e314690e800a238a750b60027b4002a290 done
+  #13 exporting attestation manifest sha256:6074fedf8a4587f77cc2bc2a94c7f3114f9715fb96c24d6a1762bb065fabbce1 done
+  #13 exporting manifest list sha256:1f2f0715e42b427a27d8f6dab0abb1bd8afcbdda0ed547679862c4e902749030 done
   #13 sending tarball
   #13 sending tarball 0.7s done
   #13 DONE 0.7s
@@ -95,10 +95,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   Masking supported pattern matches of $OTRUST_KEY
   [Pipeline] {
   [Pipeline] sh
-  + curl -fsSLo otrust-assess.sh https://raw.githubusercontent.com/dario-mr/open-trust/3612251130f54b98aefe4379e045bae558e89225/ci-templates/generic/otrust-assess.sh
+  + curl -fsSLo otrust-assess.sh https://raw.githubusercontent.com/dario-mr/open-trust/a3e169c69752aee06787416b331e5dc067088f2b/ci-templates/generic/otrust-assess.sh
   + OTRUST_IMAGE=image.oci.tar sh otrust-assess.sh
   Subject   sha256:fe88e4184314e081e71de8e4a7e5b19406f21dbf21318ac83de9bbe14b571b13
-  Source    https://github.com/dario-mr/open-trust-demo.git @ a96cf7b41d49060dc9edf3bc68c750dfb57ad297 (jenkins)
+  Source    https://github.com/dario-mr/open-trust-demo.git @ 593458882148c0dcf8d25ce635cb0c0c19b7b83f (jenkins)
   Profile   supply-chain-baseline 1.0.0
   ✔ sbom             PASSED
   ✔ vulns            PASSED
@@ -134,12 +134,12 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   "ci": {
     "provider": "jenkins",
     "repo": "https://github.com/dario-mr/open-trust-demo.git",
-    "revision": "a96cf7b41d49060dc9edf3bc68c750dfb57ad297",
+    "revision": "593458882148c0dcf8d25ce635cb0c0c19b7b83f",
     "runUrl": "http://localhost:18080/job/open-trust-demo/1/"
   },
   "trustLevel": "L1",
   "agentDigest": {
-    "sha256": "67a647caefe5ba351e42b5e3c267704b9ec3ef1b45e50b02f8f60b5b71571254"
+    "sha256": "d0956a709a5180574b27a4af42c94a98d8e08ea6b81f0a5d39f2c64e76ff87e3"
   }
 }
 
@@ -148,10 +148,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key YZktZ/qWaMYjGsXoZEjrycNtM0h5/X4WWWU9gFRBRQE=)
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key XfrG+Ks7MpCtcJpVjSr0TIiiwVYjXkVg2GOUDnNHzuk=)
     ✔ For exactly this image: sha256:fe88e4184314e081e71de8e4a7e5b19406f21dbf21318ac83de9bbe14b571b13
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ a96cf7b41d49060dc9edf3bc68c750dfb57ad297 (jenkins)
-    ✔ Assessed 2026-11-21T17:18:01Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T17:18:01Z
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 593458882148c0dcf8d25ce635cb0c0c19b7b83f (jenkins)
+    ✔ Assessed 2026-11-21T22:03:28Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T22:03:28Z
     ✔ Trust level L1: whoever holds the vendor's key signed it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
   
@@ -164,7 +164,7 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-21T17:17:50Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-21T22:03:17Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -185,10 +185,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key YZktZ/qWaMYjGsXoZEjrycNtM0h5/X4WWWU9gFRBRQE=)
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key XfrG+Ks7MpCtcJpVjSr0TIiiwVYjXkVg2GOUDnNHzuk=)
     ✔ For exactly this image: sha256:fe88e4184314e081e71de8e4a7e5b19406f21dbf21318ac83de9bbe14b571b13
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ a96cf7b41d49060dc9edf3bc68c750dfb57ad297 (jenkins)
-    ✔ Assessed 2026-11-21T17:18:01Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T17:18:01Z
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 593458882148c0dcf8d25ce635cb0c0c19b7b83f (jenkins)
+    ✔ Assessed 2026-11-21T22:03:28Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T22:03:28Z
     ✔ Trust level L1: whoever holds the vendor's key signed it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
     ✔ Your own scan of the image agrees with the certificate, and its packages match the vendor's SBOM
@@ -202,7 +202,7 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-21T17:17:50Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-21T22:03:17Z)
   
   Your re-check today: PASSED (your vulnerability DB 2026-11-21T13:02:47.203212637Z, the vendor's 2026-11-21T13:02:47.203212637Z)
     ✔ Nothing new, nothing missing
