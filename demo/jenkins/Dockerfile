@@ -6,5 +6,9 @@ COPY --from=docker /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker /usr/local/libexec/docker/cli-plugins/docker-buildx /usr/local/libexec/docker/cli-plugins/docker-buildx
 # shortcut: plugin versions float with the update centre; pin them if the demo must be reproducible
 RUN jenkins-plugin-cli --plugins workflow-aggregator git configuration-as-code job-dsl credentials-binding plain-credentials
+# run.sh runs Jenkins as root on a JENKINS_HOME mounted from the host user's home: git would refuse
+# those repositories as "dubious ownership"
+USER root
+RUN git config --system --add safe.directory '*'
 COPY casc.yaml /usr/share/jenkins/ref/casc.yaml
 ENV CASC_JENKINS_CONFIG=/usr/share/jenkins/ref/casc.yaml

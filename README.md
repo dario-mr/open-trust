@@ -17,6 +17,7 @@ The vendor side lives in a separate repository, **[dario-mr/open-trust-demo](htt
 | | |
 |---|---|
 | Key-signed (`L1`), any CI | `otrust keygen --out vendor` then `otrust assess --key vendor.key --image img.oci.tar --source .` |
+| Jenkins, Azure DevOps, any other CI | [`ci-templates/generic/otrust-assess.sh`](ci-templates/generic/otrust-assess.sh) downloads a pinned release, checks its digest and signs with a key from the CI's secret store. Examples: [Jenkinsfile](ci-templates/jenkins/Jenkinsfile) (run for real in a local Jenkins: [demo/jenkins](demo/jenkins/run.sh)), [Azure Pipelines](ci-templates/azure-devops/azure-pipelines.yml) (not yet run on Azure). |
 | Keyless (`L1+ci-identity`), GitHub Actions, GitLab CI (`ci-templates/gitlab/otrust.gitlab-ci.yml`), or any CI exposing `SIGSTORE_ID_TOKEN` | `otrust assess --keyless --image img.oci.tar --source .` |
 | Reusable workflow (GitHub), `L1+isolated-assessor` when called from another repository | `uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>` with `image-ref: ghcr.io/acme/svc@sha256:…` or an image artifact (see the header of [assess.yml](.github/workflows/assess.yml)) |
 | Customer | `otrust verify cert.sigstore.json --image img.oci.tar --trust-policy trust.yaml [--trusted-root root.json] [--evidence dir] [--revocations file] [--online] [--recheck] [--previous old.json] [--report report.md]` |

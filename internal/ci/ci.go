@@ -66,8 +66,10 @@ func Detect(ctx context.Context, sourceDir, repo, revision string) (Env, error) 
 			return e, fmt.Errorf("no --source-revision given and git failed: %w", err)
 		}
 		e.Revision = out
-		// a dirty tree means the scanned source is not exactly the revision we record
-		if st, _ := git(ctx, sourceDir, "status", "--porcelain"); st != "" {
+		// modified tracked files mean the scanned source is not exactly the revision we record. Untracked
+		// files don't: CI workspaces hold build outputs (the image, otrust-out), and the scanners cover
+		// untracked files anyway.
+		if st, _ := git(ctx, sourceDir, "status", "--porcelain", "--untracked-files=no"); st != "" {
 			e.Revision += "+dirty"
 		}
 	}

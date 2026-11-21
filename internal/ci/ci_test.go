@@ -4,6 +4,10 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -107,5 +111,29 @@ func TestRepoCredentialsNeverRecorded(t *testing.T) {
 	}
 	if e, _ := Detect(context.Background(), t.TempDir(), "git@github.com:acme/svc.git", "abc"); e.Repo != "git@github.com:acme/svc.git" {
 		t.Fatalf("scp-style remote changed: %q", e.Repo)
+	}
+}
+
+func TestDirtyMeansModifiedTrackedFiles(t *testing.T) {
+	fakeEnv(t, map[string]string{})
+	dir := t.TempDir()
+	sh := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com"}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	sh("init", "-q")
+	os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n"), 0o644)
+	sh("add", ".")
+	sh("commit", "-qm", "init")
+	os.WriteFile(filepath.Join(dir, "image.oci.tar"), []byte("build output"), 0o644) // untracked: still clean
+	if e, _ := Detect(context.Background(), dir, "", ""); strings.HasSuffix(e.Revision, "+dirty") {
+		t.Fatalf("untracked build output made it dirty: %s", e.Revision)
+	}
+	os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main // changed\n"), 0o644)
+	if e, _ := Detect(context.Background(), dir, "", ""); !strings.HasSuffix(e.Revision, "+dirty") {
+		t.Fatalf("modified tracked file not flagged: %s", e.Revision)
 	}
 }
