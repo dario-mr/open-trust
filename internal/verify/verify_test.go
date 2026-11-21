@@ -353,3 +353,23 @@ func TestTrustPolicyIsRequiredAndStrict(t *testing.T) {
 		t.Fatalf("keyless without trusted root: %v", err)
 	}
 }
+
+func TestMinAgentVersion(t *testing.T) {
+	withVersion := func(v string) func(map[string]any, *statement.Extension) {
+		return func(p map[string]any, _ *statement.Extension) {
+			p["verifier"] = map[string]any{"id": statement.VerifierID, "version": map[string]string{"otrust": v}}
+		}
+	}
+	for v, want := range map[string]Code{"0.1.4": AgentOutdated, "0.1.8": OK, "0.2.0": OK, "test": AgentOutdated} {
+		c := newCert(t, "clean", withVersion(v))
+		c.opts.TrustPolicy = writeTrust(t, c.dir, "minAgentVersion: 0.1.8\nsigners:\n  - name: vendor\n    publicKey: vendor.pub\n")
+		if r := run(t, c.opts); r.Code != want {
+			t.Errorf("otrust %s: got %s (%s), want %s", v, r.Code, r.Reason, want)
+		}
+	}
+	c := newCert(t, "clean", nil)
+	if _, err := Verify(context.Background(), Options{Bundle: c.bundle, Image: c.image,
+		TrustPolicy: writeTrust(t, c.dir, "minAgentVersion: latest\nsigners:\n  - name: vendor\n    publicKey: vendor.pub\n")}); err == nil {
+		t.Error("a minAgentVersion that is not a version must be refused")
+	}
+}

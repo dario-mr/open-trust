@@ -59,6 +59,22 @@ signers:
     requireHostedRunner: true
 ```
 
+Pinning the assessor by commit is the strictest choice, but you must update the pin whenever the vendor upgrades. To accept any release of the assessor instead, loosen `buildSigner` to any commit pin or release tag (not branches, which can hold unreleased code) and set a floor, so an old, weaker assessor is still refused (`AGENT_OUTDATED`):
+
+```yaml
+minTrustLevel: L1+isolated-assessor
+minAgentVersion: 0.1.9   # otrust v0.1.10+; the version the assessor signed into the certificate
+signers:
+  - name: Acme svc, via any Open Trust assessor release since v0.1.9
+    issuer: https://token.actions.githubusercontent.com
+    sourceRepo: https://github.com/acme/svc
+    sourceRef: refs/heads/main
+    buildSigner: ^https://github\.com/dario-mr/open-trust/\.github/workflows/assess\.yml@([0-9a-f]{40}|refs/tags/v[0-9.]+)$
+    requireHostedRunner: true
+```
+
+Keep `requireHostedRunner: true`: without it, a certificate from a vendor-controlled runner is accepted too. These outcomes were checked on real CI ([demo/attacks](../demo/attacks/RESULTS.txt)).
+
 ## Trust levels: how much the signature proves
 
 The verifier works out the level **from the signature**. Whatever level the certificate claims is ignored. Set the minimum you accept with `minTrustLevel`.
@@ -110,6 +126,7 @@ The last line is always the result code (`VERIFIED`, or `CODE: reason`), for scr
 | `EXPIRED` | 17 | Older than 30 days. Ask the vendor for a fresh assessment. |
 | `REVOKED` | 18 | The artifact, the assessor binary or the signer was revoked |
 | `POLICY_UNKNOWN` / `MALFORMED` | 19 / 20 | This verifier does not know the profile, or the certificate is not a valid Open Trust certificate |
+| `AGENT_OUTDATED` | 23 | The certificate is genuine, but its assessor is older than your `minAgentVersion` |
 | `RECHECK_MISMATCH` | 21 | `--recheck`: your own scan contradicts the certificate (an unreported known vulnerability, or different packages) |
 | `OUTDATED` | 22 | `--recheck`: the certificate is honest, but the image fails the profile with today's vulnerability data |
 

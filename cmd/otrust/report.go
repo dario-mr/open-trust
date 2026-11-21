@@ -23,6 +23,7 @@ var meaning = map[verify.Code]string{
 	verify.Revoked:          "The certificate, the assessor or the signer was revoked. Do not deploy.",
 	verify.PolicyUnknown:    "It was assessed with a profile this verifier does not know. Update otrust.",
 	verify.Malformed:        "This is not a valid Open Trust certificate.",
+	verify.AgentOutdated:    "The certificate is genuine, but an older assessor made it than your trust policy accepts. Ask the vendor to re-assess with a current one.",
 	verify.RecheckMismatch:  "Your own scan of the image contradicts the certificate: the vendor's results are not reliable for this image.",
 	verify.Outdated:         "The certificate was honest, but vulnerabilities published since then make the image fail today. Ask the vendor for a fixed release.",
 }
@@ -50,7 +51,7 @@ type section struct {
 // order mirrors the sequence of checks in verify.Verify, for the ✔/✘ marks.
 var order = map[verify.Code]int{
 	verify.InvalidSignature: 1, verify.UntrustedSigner: 2, verify.Malformed: 3, verify.PolicyUnknown: 4,
-	verify.ArtifactMismatch: 5, verify.TrustLevelTooLow: 6, verify.Revoked: 7, verify.Expired: 8,
+	verify.ArtifactMismatch: 5, verify.TrustLevelTooLow: 6, verify.AgentOutdated: 6, verify.Revoked: 7, verify.Expired: 8,
 	verify.EvidenceMissing: 9, verify.EvidenceMismatch: 9, verify.AssessmentFailed: 10,
 	verify.RecheckMismatch: 11, verify.Outdated: 12,
 }

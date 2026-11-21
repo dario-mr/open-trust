@@ -45,6 +45,7 @@ const (
 	EvidenceMissing  Code = "EVIDENCE_MISSING"
 	EvidenceMismatch Code = "EVIDENCE_MISMATCH"
 	AssessmentFailed Code = "ASSESSMENT_FAILED"
+	AgentOutdated    Code = "AGENT_OUTDATED"   // the assessor is older than the trust policy's minAgentVersion
 	RecheckMismatch  Code = "RECHECK_MISMATCH" // --recheck: the image contradicts the certificate
 	Outdated         Code = "OUTDATED"         // --recheck: honest certificate, but the image fails today
 )
@@ -53,7 +54,7 @@ const (
 var ExitCodes = map[Code]int{
 	OK: 0, AssessmentFailed: 10, InvalidSignature: 11, UntrustedSigner: 12, TrustLevelTooLow: 13,
 	ArtifactMismatch: 14, EvidenceMismatch: 15, EvidenceMissing: 16, Expired: 17, Revoked: 18,
-	PolicyUnknown: 19, Malformed: 20, RecheckMismatch: 21, Outdated: 22,
+	PolicyUnknown: 19, Malformed: 20, RecheckMismatch: 21, Outdated: 22, AgentOutdated: 23,
 }
 
 type Options struct {
@@ -178,6 +179,9 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	}
 	if min := tp.minFor(sp); !trustlevel.AtLeast(r.TrustLevel, min) {
 		return r.fail(TrustLevelTooLow, "trust level %s is below the required %s", r.TrustLevel, min), nil
+	}
+	if why := agentTooOld(p.Verifier.Version["otrust"], tp.minAgentFor(sp)); why != "" {
+		return r.fail(AgentOutdated, "%s", why), nil
 	}
 
 	// 5. revocation and expiry
