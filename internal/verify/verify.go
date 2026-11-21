@@ -61,7 +61,7 @@ type Options struct {
 	Image       string // OCI layout the customer received, or a registry reference pinned by digest
 	TrustPolicy string // required: who the customer trusts
 	Evidence    string // optional: evidence dir shared by the vendor
-	TrustedRoot string // Sigstore trusted_root.json; required for certificate-signed bundles
+	TrustedRoot string // Sigstore trusted_root.json; for certificate-signed bundles (or Online fetches it)
 	Revocations string // optional: your own revocations.json, or a downloaded signed list
 	Online      bool   // fetch the signed Open Trust revocation list (RevocationsURL)
 	Recheck     bool   // re-run the image scanners (needs docker) and compare with the certificate
@@ -126,7 +126,8 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	if now.IsZero() {
 		now = time.Now()
 	}
-	r, sp, err := authenticate(o.Bundle, o.TrustedRoot, tp)
+	loadRoot := trustedRootLoader(o)
+	r, sp, err := authenticate(o.Bundle, loadRoot, tp)
 	if err != nil || r.Code != "" {
 		return r, err
 	}
@@ -136,7 +137,7 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	}
 
 	if o.Previous != "" {
-		ch, note, err := comparePrevious(o.Previous, o.TrustedRoot, tp, r)
+		ch, note, err := comparePrevious(o.Previous, loadRoot, tp, r)
 		if err != nil {
 			return nil, fmt.Errorf("previous certificate: %w", err)
 		}
@@ -183,15 +184,7 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	if o.Revocations == "" && !o.Online {
 		r.Notes = append(r.Notes, "no revocation list given: revocation not checked (use --online)")
 	}
-	tm := func() (root.TrustedMaterial, error) {
-		if o.TrustedRoot != "" {
-			return root.NewTrustedRootFromPath(o.TrustedRoot)
-		}
-		if o.Online {
-			return root.FetchTrustedRoot()
-		}
-		return nil, errors.New("a signed revocation list needs --trusted-root (or --online)")
-	}
+	tm := func() (root.TrustedMaterial, error) { return loadRoot() }
 	var lists []*revocationList
 	if o.Revocations != "" {
 		rl, note, err := loadRevocations(o.Revocations, tm, now)
@@ -330,7 +323,7 @@ func checkEvidence(ctx context.Context, dir, subjectDigest string, p *Predicate)
 
 // authenticate checks a certificate's signature against the trust policy and decodes its statement.
 // On a verification failure the returned report carries the code; err means unusable inputs.
-func authenticate(path, trustedRoot string, tp *TrustPolicy) (*Report, *SignerPolicy, error) {
+func authenticate(path string, loadRoot func() (*root.TrustedRoot, error), tp *TrustPolicy) (*Report, *SignerPolicy, error) {
 	r := &Report{}
 
 	// 1. signature and signer
@@ -363,12 +356,9 @@ func authenticate(path, trustedRoot string, tp *TrustPolicy) (*Report, *SignerPo
 		}
 		r.TrustLevel = trustlevel.L1
 	} else {
-		if trustedRoot == "" {
-			return nil, nil, errors.New("certificate-signed bundle: --trusted-root is required (e.g. `gh attestation trusted-root`)")
-		}
-		tr, err := root.NewTrustedRootFromPath(trustedRoot)
+		tr, err := loadRoot()
 		if err != nil {
-			return nil, nil, fmt.Errorf("trusted root: %w", err)
+			return nil, nil, err
 		}
 		v, err := sgverify.NewVerifier(tr, sgverify.WithSignedCertificateTimestamps(1),
 			sgverify.WithTransparencyLog(1), sgverify.WithObserverTimestamps(1))
@@ -409,4 +399,29 @@ func authenticate(path, trustedRoot string, tp *TrustPolicy) (*Report, *SignerPo
 	r.Predicate, r.ClaimedTrustLevel = st.Predicate, st.Predicate.Ext.TrustLevel
 	r.SubjectDigest = "sha256:" + st.Subject[0].Digest["sha256"]
 	return r, sp, nil
+}
+
+// trustedRootLoader returns Sigstore's trusted root: --trusted-root, or with --online fetched via TUF
+// (sigstore-go checks it against its embedded TUF root). Loaded at most once per verification.
+func trustedRootLoader(o Options) func() (*root.TrustedRoot, error) {
+	var tr *root.TrustedRoot
+	var err error
+	return func() (*root.TrustedRoot, error) {
+		if tr != nil || err != nil {
+			return tr, err
+		}
+		switch {
+		case o.TrustedRoot != "":
+			if tr, err = root.NewTrustedRootFromPath(o.TrustedRoot); err != nil {
+				err = fmt.Errorf("trusted root: %w", err)
+			}
+		case o.Online:
+			if tr, err = root.FetchTrustedRoot(); err != nil {
+				err = fmt.Errorf("fetching Sigstore's trusted root: %w", err)
+			}
+		default:
+			err = errors.New("needs Sigstore's trusted root: pass --online to fetch it, or --trusted-root <file> to stay offline (`gh attestation trusted-root > root.json`)")
+		}
+		return tr, err
+	}
 }

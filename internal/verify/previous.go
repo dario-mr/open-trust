@@ -3,6 +3,8 @@ package verify
 import (
 	"fmt"
 	"slices"
+
+	"github.com/sigstore/sigstore-go/pkg/root"
 )
 
 // Changes compares this certificate with an earlier one for the same product.
@@ -14,8 +16,8 @@ type Changes struct {
 
 // comparePrevious authenticates the previous certificate with the same trust policy (so a forged
 // "previous" can't misreport changes) and lists what changed. A failure becomes a note, not a result.
-func comparePrevious(path, trustedRoot string, tp *TrustPolicy, cur *Report) (*Changes, string, error) {
-	prev, _, err := authenticate(path, trustedRoot, tp)
+func comparePrevious(path string, loadRoot func() (*root.TrustedRoot, error), tp *TrustPolicy, cur *Report) (*Changes, string, error) {
+	prev, _, err := authenticate(path, loadRoot, tp)
 	if err != nil {
 		return nil, "", err
 	}

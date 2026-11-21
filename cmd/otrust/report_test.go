@@ -30,3 +30,13 @@ func TestReportEndsWithVerdict(t *testing.T) {
 		}
 	}
 }
+
+func TestSeverityCounts(t *testing.T) {
+	fs := []string{"CRITICAL a", "HIGH b", "HIGH c", "WARNING d"}
+	if got := severityCounts(fs); got != " (1 CRITICAL, 2 HIGH, 1 WARNING)" {
+		t.Errorf("got %q", got)
+	}
+	if got := severityCounts(fs[:3]); got != "" {
+		t.Errorf("short lists need no summary, got %q", got)
+	}
+}

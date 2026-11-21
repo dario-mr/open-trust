@@ -8,21 +8,33 @@ A vendor sends you software and an **Open Trust certificate** for it. This page 
 
 It does **not** say the software is secure. The scanners find *known* vulnerabilities, leaked secrets and *pattern-matched* code flaws, nothing more. The checks are listed in [Supply-Chain Baseline v1](../profiles/supply-chain-baseline/v1/profile.md): SBOM, vulnerabilities, secrets, static analysis, build provenance and artifact binding.
 
+## Get otrust
+
+Download the binary for your platform from the [releases](https://github.com/dario-mr/open-trust/releases) and check it before you rely on it. With the GitHub CLI, this proves the binary was built by this repository's release workflow:
+
+```bash
+gh release download v0.1.7 -R dario-mr/open-trust -p otrust-linux-amd64   # or -darwin-arm64, …
+gh attestation verify otrust-linux-amd64 -R dario-mr/open-trust \
+  --signer-workflow dario-mr/open-trust/.github/workflows/release.yml
+chmod +x otrust-linux-amd64 && mv otrust-linux-amd64 otrust
+```
+
+Without `gh`, compare the binary with `SHA256SUMS` from the same release (`sha256sum -c --ignore-missing SHA256SUMS`). That checks the download, not who built it.
+
 ## Check it
 
 You need the artifact (an OCI image, as a file or as a registry reference pinned by digest, `registry/name@sha256:…`), the certificate (`certificate.sigstore.json`) and **your own** trust policy. The trust policy is your decision about whose certificates you accept. There is no default.
 
 ```bash
-otrust verify certificate.sigstore.json --image image.oci.tar --trust-policy trust.yaml \
-  --trusted-root trusted-root.json    # Sigstore public-good root: `gh attestation trusted-root`
-  [--online]                          # also check the signed revocation list
+otrust verify certificate.sigstore.json --image image.oci.tar --trust-policy trust.yaml --online
+  [--trusted-root root.json]          # instead of --online: fully offline (`gh attestation trusted-root > root.json`)
   [--evidence otrust-out/]            # if the vendor shares the raw evidence
   [--recheck]                         # scan the image yourself and compare (needs Docker)
   [--previous old.sigstore.json]      # list what changed since an earlier release
   [--report report.md]                # also write the report as Markdown, to pass on
 ```
 
-Verification needs no network when you pass the image as a file. A registry reference pulls it first, and the certificate must name that image (a different digest gives `ARTIFACT_MISMATCH`). `--online` adds the one other network call, which fetches the signed revocation list. `--evidence` re-checks the vendor's raw scan output against the certificate and re-runs the policy, which catches a summary that does not match its evidence.
+`--online` fetches two things: Sigstore's trusted root (checked against the root built into otrust), needed to check a keyless certificate's signature, and the signed Open Trust revocation list. To verify with no network at all, save the trusted root once with `gh attestation trusted-root > root.json`, pass `--trusted-root root.json` instead of `--online`, and pass the image as a file. A registry reference pulls the image first, and the certificate must name that image (a different digest gives `ARTIFACT_MISMATCH`). `--evidence` re-checks the vendor's raw scan output against the certificate and re-runs the policy, which catches a summary that does not match its evidence.
 
 ### Re-check: don't take the vendor's word for the image
 

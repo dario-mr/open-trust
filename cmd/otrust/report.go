@@ -103,7 +103,7 @@ func buildReport(r *verify.Report) []section {
 	checks := section{title: "Checks, as the vendor's assessment reports them"}
 	marks := map[string]string{"PASSED": "✔", "WARN": "⚠", "FAILED": "✘"}
 	for _, c := range e.Checks {
-		add(&checks, marks[c.Result], fmt.Sprintf("%-16s %s", c.ID, c.Result), c.Findings...)
+		add(&checks, marks[c.Result], fmt.Sprintf("%-16s %s%s", c.ID, c.Result, severityCounts(c.Findings)), c.Findings...)
 	}
 	if sg, ok := e.Tools["semgrep"].(map[string]any); ok {
 		if rs, ok := sg["ruleset"].(map[string]any); ok {
@@ -166,6 +166,29 @@ func buildReport(r *verify.Report) []section {
 		add(&notes, "ℹ", n)
 	}
 	return []section{proves, checks, risks, recheck, changes, limits, notes}
+}
+
+// severityCounts summarises a long finding list, e.g. " (5 CRITICAL, 33 HIGH)": findings start with
+// their severity (policy.rego).
+func severityCounts(findings []string) string {
+	if len(findings) <= 3 {
+		return ""
+	}
+	n := map[string]int{}
+	for _, f := range findings {
+		sev, _, _ := strings.Cut(f, " ")
+		n[sev]++
+	}
+	var parts []string
+	for _, sev := range []string{"CRITICAL", "HIGH", "ERROR", "MEDIUM", "WARNING", "LOW"} {
+		if n[sev] > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n[sev], sev))
+		}
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return " (" + strings.Join(parts, ", ") + ")"
 }
 
 func headline(r *verify.Report) string {
