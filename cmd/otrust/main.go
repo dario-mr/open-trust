@@ -177,6 +177,8 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (needed for keyless/CI-signed certificates)")
 	fs.StringVar(&o.Revocations, "revocations", "", "revocations.json: your own list, or a downloaded signed Open Trust list")
 	fs.BoolVar(&o.Online, "online", false, "fetch the signed Open Trust revocation list (the only network access)")
+	fs.StringVar(&o.Previous, "previous", "", "an earlier certificate for the same product: lists what changed (checked against the same trust policy)")
+	report := fs.String("report", "", "also write the report as Markdown to this file, to pass on")
 	fs.BoolVar(&o.Recheck, "recheck", false, "re-run the image scanners yourself (needs docker; downloads the vulnerability DB) and compare with the certificate")
 	// flags may follow the positional certificate path
 	var pos []string
@@ -200,91 +202,13 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		return 2
 	}
 	printReport(stdout, r)
+	if *report != "" {
+		if err := os.WriteFile(*report, []byte(markdownReport(r, o.Bundle, o.Image)), 0o644); err != nil {
+			fmt.Fprintln(stderr, "otrust:", err)
+			return 2
+		}
+	}
 	return verify.ExitCodes[r.Code]
-}
-
-func printReport(w io.Writer, r *verify.Report) {
-	ok := func(cond bool) string {
-		if cond {
-			return "✔"
-		}
-		return "✘"
-	}
-	reached := func(c verify.Code) bool { return r.Code == verify.OK || order[r.Code] > order[c] }
-	if r.SignerIdentity != "" {
-		fmt.Fprintf(w, "%s Signature   %s\n", ok(reached(verify.InvalidSignature)), r.SignerIdentity)
-	}
-	if r.SignerName != "" && reached(verify.UntrustedSigner) {
-		fmt.Fprintf(w, "✔ Signer      %q in your trust policy\n", r.SignerName)
-	}
-	if p := r.Predicate; p != nil {
-		e := p.Ext
-		fmt.Fprintf(w, "%s Artifact    %s\n", ok(reached(verify.ArtifactMismatch)), r.SubjectDigest)
-		fmt.Fprintf(w, "  Source      %s @ %s (%s)\n", orDash(e.CI.Repo), e.CI.Revision, e.CI.Provider)
-		fmt.Fprintf(w, "  Profile     %s\n", p.Policy.URI)
-		if sg, ok := e.Tools["semgrep"].(map[string]any); ok {
-			if rs, ok := sg["ruleset"].(map[string]any); ok {
-				fmt.Fprintf(w, "  SAST rules  %v sha256:%v (%v rules, fetched %v)\n", rs["source"], rs["sha256"], rs["rules"], rs["fetched"])
-			}
-		}
-		fmt.Fprintf(w, "  Assessed    %s, valid until %s\n", p.TimeVerified, e.ValidUntil)
-		fmt.Fprintf(w, "  Trust level %s\n", r.TrustLevel)
-		fmt.Fprintln(w, "  Checks:")
-		for _, c := range e.Checks {
-			fmt.Fprintf(w, "    %-16s %s\n", c.ID, c.Result)
-			for _, f := range c.Findings {
-				fmt.Fprintf(w, "      - %s\n", f)
-			}
-		}
-		// always shown, even on PASSED
-		for _, x := range e.Exceptions {
-			fmt.Fprintf(w, "  Exception   %s %s (expires %s): %s\n", x.Check, x.ID, x.Expires, x.Reason)
-		}
-		for _, u := range e.UnmetRequirements {
-			fmt.Fprintf(w, "  Unmet       %s\n", u)
-		}
-		for _, l := range e.Limitations {
-			fmt.Fprintf(w, "  Limitation  %s\n", l)
-		}
-		if r.EvidenceChecked {
-			fmt.Fprintln(w, "✔ Evidence    digests match and the policy re-evaluates to the same results")
-		}
-	}
-	if rc := r.Recheck; rc != nil {
-		fmt.Fprintf(w, "%s Re-check    your own scan of the image today: %s (your vulnerability DB %s, vendor's %s)\n",
-			ok(rc.MismatchFree()), rc.Result, orDash(rc.DB), orDash(rc.VendorDB))
-		if rc.PackagesCompared && len(rc.PackagesMissing)+len(rc.PackagesExtra) == 0 {
-			fmt.Fprintln(w, "  Packages    identical to the vendor's SBOM")
-		}
-		for _, x := range rc.PackagesMissing {
-			fmt.Fprintf(w, "  Not in SBOM %s\n", x)
-		}
-		for _, x := range rc.PackagesExtra {
-			fmt.Fprintf(w, "  Not in image %s\n", x)
-		}
-		for _, x := range rc.Unreported {
-			fmt.Fprintf(w, "  Unreported  %s\n", x)
-		}
-		for _, x := range rc.New {
-			fmt.Fprintf(w, "  New since   %s\n", x)
-		}
-	}
-	for _, n := range r.Notes {
-		fmt.Fprintf(w, "ℹ %s\n", n)
-	}
-	if r.Code == verify.OK {
-		fmt.Fprintln(w, "\nVERIFIED")
-	} else {
-		fmt.Fprintf(w, "\n%s: %s\n", r.Code, r.Reason)
-	}
-}
-
-// order mirrors the sequence of checks in verify.Verify, for the ✔/✘ marks.
-var order = map[verify.Code]int{
-	verify.InvalidSignature: 1, verify.UntrustedSigner: 2, verify.Malformed: 3, verify.PolicyUnknown: 4,
-	verify.ArtifactMismatch: 5, verify.TrustLevelTooLow: 6, verify.Revoked: 7, verify.Expired: 8,
-	verify.EvidenceMissing: 9, verify.EvidenceMismatch: 9, verify.AssessmentFailed: 10,
-	verify.RecheckMismatch: 11, verify.Outdated: 12,
 }
 
 func orDash(s string) string {

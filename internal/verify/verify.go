@@ -65,6 +65,7 @@ type Options struct {
 	Revocations string // optional: your own revocations.json, or a downloaded signed list
 	Online      bool   // fetch the signed Open Trust revocation list (RevocationsURL)
 	Recheck     bool   // re-run the image scanners (needs docker) and compare with the certificate
+	Previous    string // optional: an earlier certificate for the same product, to list what changed
 	Now         time.Time
 }
 
@@ -80,6 +81,7 @@ type Report struct {
 	Predicate         *Predicate
 	EvidenceChecked   bool
 	Recheck           *Recheck // set with Options.Recheck once the assessment itself passed
+	Changes           *Changes // set with Options.Previous when that certificate authenticates
 	Notes             []string
 }
 
@@ -124,86 +126,23 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	if now.IsZero() {
 		now = time.Now()
 	}
-	r := &Report{}
-
-	// 1. signature and signer
-	b, err := bundle.LoadJSONFromPath(o.Bundle)
-	if err != nil {
-		return r.fail(Malformed, "not a Sigstore bundle: %v", err), nil
+	r, sp, err := authenticate(o.Bundle, o.TrustedRoot, tp)
+	if err != nil || r.Code != "" {
+		return r, err
 	}
-	vc, err := b.VerificationContent()
-	if err != nil {
-		return r.fail(Malformed, "bundle has no verification material: %v", err), nil
-	}
-	var sp *SignerPolicy
-	if pk := vc.PublicKey(); pk != nil {
-		r.SignerIdentity = "key " + pk.Hint()
-		if sp = tp.keyByHint(pk.Hint()); sp == nil {
-			return r.fail(UntrustedSigner, "signed with key %s, which the trust policy does not list", pk.Hint()), nil
-		}
-		ver, err := signature.LoadVerifier(sp.pub, crypto.SHA256)
-		if err != nil {
-			return nil, err
-		}
-		v, err := sgverify.NewVerifier(root.NewTrustedPublicKeyMaterialFromMapping(
-			map[string]*root.ExpiringKey{pk.Hint(): root.NewExpiringKey(ver, time.Time{}, time.Time{})}),
-			sgverify.WithNoObserverTimestamps())
-		if err != nil {
-			return nil, err
-		}
-		if _, err := v.Verify(b, sgverify.NewPolicy(sgverify.WithoutArtifactUnsafe(), sgverify.WithKey())); err != nil {
-			return r.fail(InvalidSignature, "%v", err), nil
-		}
-		r.TrustLevel = trustlevel.L1
-	} else {
-		if o.TrustedRoot == "" {
-			return nil, errors.New("certificate-signed bundle: --trusted-root is required (e.g. `gh attestation trusted-root`)")
-		}
-		tr, err := root.NewTrustedRootFromPath(o.TrustedRoot)
-		if err != nil {
-			return nil, fmt.Errorf("trusted root: %w", err)
-		}
-		v, err := sgverify.NewVerifier(tr, sgverify.WithSignedCertificateTimestamps(1),
-			sgverify.WithTransparencyLog(1), sgverify.WithObserverTimestamps(1))
-		if err != nil {
-			return nil, err
-		}
-		// Identity is matched below against the trust policy, with a reason per signer.
-		res, err := v.Verify(b, sgverify.NewPolicy(sgverify.WithoutArtifactUnsafe(), sgverify.WithoutIdentitiesUnsafe()))
-		if err != nil {
-			return r.fail(InvalidSignature, "%v", err), nil
-		}
-		c := res.Signature.Certificate
-		r.SignerIdentity = c.SubjectAlternativeName
-		if sp, err = tp.matchCert(*c); err != nil {
-			return r.fail(UntrustedSigner, "certificate identity not in trust policy (%v)", err), nil
-		}
-		r.TrustLevel = trustlevel.FromCertificate(*c)
-	}
-	r.SignerName = sp.Name
-
-	// 2. statement shape (the payload is now authenticated)
-	env := b.GetDsseEnvelope()
-	if env == nil || env.GetPayloadType() != signer.InTotoPayloadType {
-		return r.fail(Malformed, "bundle does not carry an in-toto DSSE envelope"), nil
-	}
-	var st inTotoStatement
-	if err := json.Unmarshal(env.GetPayload(), &st); err != nil {
-		return r.fail(Malformed, "statement: %v", err), nil
-	}
-	switch {
-	case st.Type != statement.StatementType, st.PredicateType != statement.VSAType:
-		return r.fail(Malformed, "unexpected statement type %q / predicate %q", st.Type, st.PredicateType), nil
-	case st.Predicate == nil || st.Predicate.Ext == nil:
-		return r.fail(Malformed, "statement has no Open Trust assessment"), nil
-	case len(st.Subject) != 1 || st.Subject[0].Digest["sha256"] == "":
-		return r.fail(Malformed, "statement must have exactly one sha256 subject"), nil
-	}
-	p := st.Predicate
-	r.Predicate, r.ClaimedTrustLevel = p, p.Ext.TrustLevel
-	r.SubjectDigest = "sha256:" + st.Subject[0].Digest["sha256"]
+	p := r.Predicate
 	if p.Policy.Digest["sha256"] != scb.PolicyDigest() {
 		return r.fail(PolicyUnknown, "policy %s (sha256:%s) is not the profile this verifier knows", p.Policy.URI, p.Policy.Digest["sha256"]), nil
+	}
+
+	if o.Previous != "" {
+		ch, note, err := comparePrevious(o.Previous, o.TrustedRoot, tp, r)
+		if err != nil {
+			return nil, fmt.Errorf("previous certificate: %w", err)
+		}
+		if r.Changes = ch; note != "" {
+			r.Notes = append(r.Notes, note)
+		}
 	}
 
 	// 3. artifact binding
@@ -387,4 +326,87 @@ func checkEvidence(ctx context.Context, dir, subjectDigest string, p *Predicate)
 		return EvidenceMismatch, "re-evaluating the evidence disagrees with the certificate: " + strings.Join(diffs, "; "), nil
 	}
 	return OK, "", nil
+}
+
+// authenticate checks a certificate's signature against the trust policy and decodes its statement.
+// On a verification failure the returned report carries the code; err means unusable inputs.
+func authenticate(path, trustedRoot string, tp *TrustPolicy) (*Report, *SignerPolicy, error) {
+	r := &Report{}
+
+	// 1. signature and signer
+	b, err := bundle.LoadJSONFromPath(path)
+	if err != nil {
+		return r.fail(Malformed, "not a Sigstore bundle: %v", err), nil, nil
+	}
+	vc, err := b.VerificationContent()
+	if err != nil {
+		return r.fail(Malformed, "bundle has no verification material: %v", err), nil, nil
+	}
+	var sp *SignerPolicy
+	if pk := vc.PublicKey(); pk != nil {
+		r.SignerIdentity = "key " + pk.Hint()
+		if sp = tp.keyByHint(pk.Hint()); sp == nil {
+			return r.fail(UntrustedSigner, "signed with key %s, which the trust policy does not list", pk.Hint()), nil, nil
+		}
+		ver, err := signature.LoadVerifier(sp.pub, crypto.SHA256)
+		if err != nil {
+			return nil, nil, err
+		}
+		v, err := sgverify.NewVerifier(root.NewTrustedPublicKeyMaterialFromMapping(
+			map[string]*root.ExpiringKey{pk.Hint(): root.NewExpiringKey(ver, time.Time{}, time.Time{})}),
+			sgverify.WithNoObserverTimestamps())
+		if err != nil {
+			return nil, nil, err
+		}
+		if _, err := v.Verify(b, sgverify.NewPolicy(sgverify.WithoutArtifactUnsafe(), sgverify.WithKey())); err != nil {
+			return r.fail(InvalidSignature, "%v", err), nil, nil
+		}
+		r.TrustLevel = trustlevel.L1
+	} else {
+		if trustedRoot == "" {
+			return nil, nil, errors.New("certificate-signed bundle: --trusted-root is required (e.g. `gh attestation trusted-root`)")
+		}
+		tr, err := root.NewTrustedRootFromPath(trustedRoot)
+		if err != nil {
+			return nil, nil, fmt.Errorf("trusted root: %w", err)
+		}
+		v, err := sgverify.NewVerifier(tr, sgverify.WithSignedCertificateTimestamps(1),
+			sgverify.WithTransparencyLog(1), sgverify.WithObserverTimestamps(1))
+		if err != nil {
+			return nil, nil, err
+		}
+		// Identity is matched below against the trust policy, with a reason per signer.
+		res, err := v.Verify(b, sgverify.NewPolicy(sgverify.WithoutArtifactUnsafe(), sgverify.WithoutIdentitiesUnsafe()))
+		if err != nil {
+			return r.fail(InvalidSignature, "%v", err), nil, nil
+		}
+		c := res.Signature.Certificate
+		r.SignerIdentity = c.SubjectAlternativeName
+		if sp, err = tp.matchCert(*c); err != nil {
+			return r.fail(UntrustedSigner, "certificate identity not in trust policy (%v)", err), nil, nil
+		}
+		r.TrustLevel = trustlevel.FromCertificate(*c)
+	}
+	r.SignerName = sp.Name
+
+	// 2. statement shape (the payload is now authenticated)
+	env := b.GetDsseEnvelope()
+	if env == nil || env.GetPayloadType() != signer.InTotoPayloadType {
+		return r.fail(Malformed, "bundle does not carry an in-toto DSSE envelope"), nil, nil
+	}
+	var st inTotoStatement
+	if err := json.Unmarshal(env.GetPayload(), &st); err != nil {
+		return r.fail(Malformed, "statement: %v", err), nil, nil
+	}
+	switch {
+	case st.Type != statement.StatementType, st.PredicateType != statement.VSAType:
+		return r.fail(Malformed, "unexpected statement type %q / predicate %q", st.Type, st.PredicateType), nil, nil
+	case st.Predicate == nil || st.Predicate.Ext == nil:
+		return r.fail(Malformed, "statement has no Open Trust assessment"), nil, nil
+	case len(st.Subject) != 1 || st.Subject[0].Digest["sha256"] == "":
+		return r.fail(Malformed, "statement must have exactly one sha256 subject"), nil, nil
+	}
+	r.Predicate, r.ClaimedTrustLevel = st.Predicate, st.Predicate.Ext.TrustLevel
+	r.SubjectDigest = "sha256:" + st.Subject[0].Digest["sha256"]
+	return r, sp, nil
 }

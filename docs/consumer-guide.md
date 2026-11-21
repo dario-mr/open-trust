@@ -18,6 +18,8 @@ otrust verify certificate.sigstore.json --image image.oci.tar --trust-policy tru
   [--online]                          # also check the signed revocation list
   [--evidence otrust-out/]            # if the vendor shares the raw evidence
   [--recheck]                         # scan the image yourself and compare (needs Docker)
+  [--previous old.sigstore.json]      # list what changed since an earlier release
+  [--report report.md]                # also write the report as Markdown, to pass on
 ```
 
 Verification needs no network when you pass the image as a file. A registry reference pulls it first, and the certificate must name that image (a different digest gives `ARTIFACT_MISMATCH`). `--online` adds the one other network call, which fetches the signed revocation list. `--evidence` re-checks the vendor's raw scan output against the certificate and re-runs the policy, which catches a summary that does not match its evidence.
@@ -74,7 +76,15 @@ Every level is **vendor-attested**. Open Trust does not audit the vendor. A high
 
 ## Reading the result
 
-The verifier prints every check, plus the exceptions the vendor accepted (each with a reason and an expiry date), any unmet requirements, and the certificate's limitations. **A PASSED result always shows these.** Read them, because an exception is a known risk the vendor chose to accept.
+The report starts with the verdict and what it means for you, in one sentence. Then it lists:
+
+- **What this proves**: the signer, the exact image, the source revision, the assessment date and the trust level in plain words, plus the evidence and re-check results if you asked for them.
+- **The checks**, as the vendor's assessment reports them, with every finding.
+- **Risks the vendor accepted**: each exception, with a reason and an expiry date, and any unmet requirements.
+- **Your re-check** (`--recheck`) and the **changes since the previous certificate** (`--previous`): new and resolved findings, check results, source revision, trust level and exceptions. The previous certificate must pass your trust policy too; if your policy pins the assessor's commit, list the old assessor as a second signer.
+- **What this does not prove**: the certificate's limitations and the limits of its trust level. **A PASSED result always shows these.** Read them, because an exception is a known risk the vendor chose to accept.
+
+The last line is always the result code (`VERIFIED`, or `CODE: reason`), for scripts. `--report report.md` writes the same report as Markdown, ready to forward to your security or procurement team.
 
 | Result | Exit | Meaning |
 |---|---|---|
