@@ -9,7 +9,7 @@ set -uo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
-VERSION=${VERSION:-v0.1.7}
+VERSION=${VERSION:-v0.1.8}
 work=${WORK:-$HOME/.cache/otrust-jenkins}
 jh=$work/home
 url=http://localhost:18080
