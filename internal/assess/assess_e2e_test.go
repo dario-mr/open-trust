@@ -163,7 +163,7 @@ func TestE2EVendorSemgrepignoreIsNeutralized(t *testing.T) {
 	}
 	// the exact ruleset used is recorded by digest, and the (non-redistributable) file is not kept
 	rs := ext.Tools["semgrep"].(map[string]any)["ruleset"].(adapters.Ruleset)
-	if len(rs.SHA256) != 64 || rs.Source != "p/java" {
+	if len(rs.SHA256) != 64 || rs.Source != "p/default" {
 		t.Fatalf("ruleset not recorded: %+v", rs)
 	}
 	if _, err := os.Stat(filepath.Join(r.OutDir, ".otrust-semgrep-rules.yaml")); !os.IsNotExist(err) {

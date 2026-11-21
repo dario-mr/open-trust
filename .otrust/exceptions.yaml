@@ -1,0 +1,14 @@
+# Exceptions for assessing otrust itself (Supply-Chain Baseline v1). Each one is recorded in the
+# certificate with its reason and expiry, so buyers see exactly what was accepted.
+- check: secrets
+  id: profiles/supply-chain-baseline/v1/fixtures/src/vulnerable/app/config/deploy.pem#private-key
+  reason: Deliberately leaked test key in the profile's conformance fixture (the failing example); not used anywhere.
+  expires: "2027-05-21T00:00:00Z"
+- check: sast
+  id: java.lang.security.audit.formatted-sql-string.formatted-sql-string
+  reason: The only Java in this repository is the conformance fixture's deliberate SQL injection.
+  expires: "2027-05-21T00:00:00Z"
+- check: sast
+  id: dockerfile.security.last-user-is-root.last-user-is-root
+  reason: demo/jenkins/Dockerfile is a local test harness that runs Jenkins as root to use the host's docker socket; it is not shipped.
+  expires: "2027-05-21T00:00:00Z"

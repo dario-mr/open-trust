@@ -49,7 +49,7 @@ type Evidence struct {
 	SemgrepRuleset     Ruleset
 }
 
-// SemgrepRegistry serves a ruleset such as p/java as one YAML document.
+// SemgrepRegistry serves a ruleset such as p/default as one YAML document.
 const SemgrepRegistry = "https://semgrep.dev/c/"
 
 // Ruleset is the SAST ruleset exactly as fetched for this run. Semgrep's registry rules are current
