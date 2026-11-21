@@ -2,13 +2,13 @@
 # The customer-side demo (poc-plan.md §7). It downloads the released otrust and checks its
 # attestation, fetches the latest open-trust-demo certificates from GitHub and GitLab, and runs each
 # scenario, comparing the verify result with the expected one.
-# Needs gh, glab, docker and jq. Writes into $WORK (default: ~/.cache/otrust-demo, which Docker
+# Needs gh, glab, docker, jq and openssl. Writes into $WORK (default: ~/.cache/otrust-demo, which Docker
 # Desktop and colima share with their VM by default; /tmp often is not).
 #   demo/scenarios.sh | tee demo/RESULTS.txt
 set -uo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-VERSION=${VERSION:-v0.1.4}
+VERSION=${VERSION:-v0.1.5}
 DEMO=dario-mr/open-trust-demo
 # the last run of the pre-release assessor (df86e37), whose otrust binary is revoked in trust/revocations.json
 OLD_RUN=${OLD_RUN:-43610582278}
@@ -58,6 +58,8 @@ scenario "1a. Clean pass on GitHub: the isolated assessor (image pulled from ghc
 	v gh/otrust-image-clean/certificate.sigstore.json --image "ghcr.io/$DEMO@$(subj gh/otrust-image-clean/certificate.sigstore.json)" --trust-policy trust.yaml --evidence gh/otrust-image-clean
 scenario "1b. The same app on GitLab: the vendor's own pipeline signs, so only ci-identity (image from the GitLab registry)" VERIFIED \
 	v gl/otrust-out/certificate.sigstore.json --image "registry.gitlab.com/$DEMO@$(subj gl/otrust-out/certificate.sigstore.json)" --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
+scenario "1d. Re-check: the buyer scans the image themselves and compares packages with the vendor's SBOM" VERIFIED \
+	v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --evidence gh/otrust-image-clean --recheck
 sed 's/^minTrustLevel: .*/minTrustLevel: L1+isolated-assessor/' trust-gitlab.yaml > trust-gitlab-strict.yaml
 scenario "1c. A buyer who demands the isolated assessor rejects the GitLab certificate" TRUST_LEVEL_TOO_LOW \
 	v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab-strict.yaml
@@ -92,6 +94,17 @@ scenario "6a. Verified, at the level a key can prove" VERIFIED \
 (printf 'minTrustLevel: L1+ci-identity\n'; cat trust-key.yaml) > trust-key-strict.yaml
 scenario "6b. A buyer requiring a CI identity rejects it" TRUST_LEVEL_TOO_LOW \
 	v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust-key-strict.yaml
+
+# A key holder can sign anything: re-sign the clean statement for the vulnerable image (DSSE PAE, ECDSA P-256)
+jq -c --arg d "$(subj gh/otrust-image-vulnerable/certificate.sigstore.json | cut -d: -f2)" '.subject[0].digest.sha256=$d' jenkins-out/statement.json > lie.json
+t=application/vnd.in-toto+json
+{ printf 'DSSEv1 %d %s %d ' ${#t} $t "$(wc -c < lie.json)"; cat lie.json; } | openssl dgst -sha256 -sign jenkins.key -out lie.sig
+jq --rawfile p lie.json --arg s "$(base64 < lie.sig | tr -d '\n')" '.dsseEnvelope.payload=($p|@base64) | .dsseEnvelope.signatures[0].sig=$s' \
+	jenkins-out/certificate.sigstore.json > lie.sigstore.json
+scenario "6c. The key holder signs a clean result for the log4j image: the signature alone cannot tell" VERIFIED \
+	v lie.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust-key.yaml
+scenario "6d. The buyer's re-check catches it: Log4Shell was public years before the scan" RECHECK_MISMATCH \
+	v lie.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy trust-key.yaml --recheck
 
 # golang:1.27.4-alpine, only as a small Linux userland: the otrust binary is static
 docker pull -q golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf >/dev/null
