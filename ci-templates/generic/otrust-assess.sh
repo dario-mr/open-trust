@@ -7,9 +7,10 @@
 #
 # Inputs (environment):
 #   OTRUST_VERSION   otrust release to use, e.g. v0.1.6 (required)
-#   OTRUST_SHA256    sha256 of otrust-<os>-<arch> for that release (required). Check the binary once with
-#                    `gh attestation verify otrust-linux-amd64 -R dario-mr/open-trust` and pin its digest:
-#                    the CI then needs no gh, and a swapped download fails here.
+#   OTRUST_SHA256    sha256 of otrust-<os>-<arch> for that release (required), or one pin per platform for
+#                    mixed agent pools: OTRUST_SHA256_LINUX_AMD64, OTRUST_SHA256_LINUX_ARM64, … Check each
+#                    binary once with `gh attestation verify otrust-linux-amd64 -R dario-mr/open-trust` and
+#                    pin its digest: the CI then needs no gh, and a swapped download fails here.
 #   OTRUST_IMAGE     OCI layout (directory or tar), or a registry image pinned by digest (required)
 #   OTRUST_SUBJECT   subject name recorded in the certificate, e.g. registry.example.com/acme/svc
 #   OTRUST_KEY       ECDSA P-256 private key file from the CI's secret store: trust level L1.
@@ -24,7 +25,6 @@
 set -eu
 
 : "${OTRUST_VERSION:?set OTRUST_VERSION, e.g. v0.1.6}"
-: "${OTRUST_SHA256:?set OTRUST_SHA256 to the sha256 of the otrust binary for this platform}"
 : "${OTRUST_IMAGE:?set OTRUST_IMAGE to an OCI layout or name@sha256:...}"
 OTRUST_SOURCE=${OTRUST_SOURCE:-.}
 OTRUST_OUT=${OTRUST_OUT:-$PWD/otrust-out}
@@ -32,11 +32,14 @@ OTRUST_FAIL_ON_FAILED=${OTRUST_FAIL_ON_FAILED:-true}
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 case $(uname -m) in x86_64 | amd64) arch=amd64 ;; aarch64 | arm64) arch=arm64 ;; *) echo "unsupported CPU $(uname -m)" >&2; exit 2 ;; esac
+pin=OTRUST_SHA256_$(echo "${os}_$arch" | tr '[:lower:]' '[:upper:]')
+want=${OTRUST_SHA256:-$(eval "printf %s \"\${$pin:-}\"")}
+[ -n "$want" ] || { echo "set OTRUST_SHA256 (or $pin) to the sha256 of otrust-$os-$arch $OTRUST_VERSION" >&2; exit 2; }
 bin=${OTRUST_BIN:-$PWD/.otrust-bin/otrust}
 mkdir -p "$(dirname "$bin")"
 curl -fsSL --retry 3 -o "$bin" "https://github.com/dario-mr/open-trust/releases/download/$OTRUST_VERSION/otrust-$os-$arch"
 if command -v sha256sum >/dev/null; then got=$(sha256sum "$bin" | cut -d' ' -f1); else got=$(shasum -a 256 "$bin" | cut -d' ' -f1); fi
-[ "$got" = "$OTRUST_SHA256" ] || { echo "otrust-$os-$arch $OTRUST_VERSION has sha256 $got, expected $OTRUST_SHA256" >&2; exit 2; }
+[ "$got" = "$want" ] || { echo "otrust-$os-$arch $OTRUST_VERSION has sha256 $got, expected $want" >&2; exit 2; }
 chmod +x "$bin"
 
 if [ -n "${OTRUST_KEY:-}" ]; then

@@ -1,0 +1,34 @@
+# Local, throwaway Jenkins: no login. run.sh publishes it on 127.0.0.1 only.
+jenkins:
+  systemMessage: Open Trust demo (local)
+  numExecutors: 1
+  authorizationStrategy: unsecured
+unclassified:
+  location:
+    url: http://localhost:18080/
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - file:
+              scope: GLOBAL
+              id: otrust-signing-key
+              description: Open Trust signing key (vendor.key from otrust keygen)
+              fileName: vendor.key
+              secretBytes: "${readFileBase64:/run/otrust/vendor.key}"
+jobs:
+  - script: |
+      pipelineJob('open-trust-demo') {
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('https://github.com/dario-mr/open-trust-demo.git') }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }
