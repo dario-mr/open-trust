@@ -1,8 +1,8 @@
 
-[1m== Setup: the released otrust v0.1.6 for the buyer, checked against its build provenance[0m
+[1m== Setup: the released otrust v0.1.7 for the buyer, checked against its build provenance[0m
 
 [1m== Vendor: a signing key, stored in Jenkins as a secret file credential[0m
-wrote vendor.key and vendor.pub (key hint WvVg724ACTIUjJIUsDae9cxNOrG1SL0bKzfqWXt8QOI=)
+wrote vendor.key and vendor.pub (key hint uw5AMKi+eyp3owtgCPLZD9lUPN/uupyTKZs/VkDWHJY=)
 give vendor.pub to customers for their trust policy; keep vendor.key secret
 
 [1m== Vendor: start Jenkins 2.580.2-lts-jdk21[0m
@@ -31,10 +31,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
    > git config --add remote.origin.fetch +refs/heads/*:refs/remotes/origin/* # timeout=10
   Avoid second fetch
    > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
-  Checking out Revision 3f3f46fb2a380e2abbd385bebc6eb2b4348e6c4f (refs/remotes/origin/main)
+  Checking out Revision 806398b7f164f9fcb1ef07ab90fefb8d7349cac8 (refs/remotes/origin/main)
    > git config core.sparsecheckout # timeout=10
-   > git checkout -f 3f3f46fb2a380e2abbd385bebc6eb2b4348e6c4f # timeout=10
-  Commit message: "Jenkinsfile: the same app, assessed on Jenkins (L1, key-signed)"
+   > git checkout -f 806398b7f164f9fcb1ef07ab90fefb8d7349cac8 # timeout=10
+  Commit message: "Assess with Open Trust v0.1.7"
   First time build. Skipping changelog.
   [Pipeline] }
   [Pipeline] // stage
@@ -49,207 +49,44 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   + docker buildx create --name otrust-oci --driver docker-container
   + docker buildx build --builder otrust-oci --provenance=mode=min --sbom=false --build-arg VARIANT=clean --output type=oci,dest=image.oci.tar .
   #0 building with "otrust-oci" instance using docker-container driver
-  #1 [internal] booting buildkit
-  #1 pulling image moby/buildkit:buildx-stable-1
-  #1 pulling image moby/buildkit:buildx-stable-1 6.9s done
-  #1 creating container buildx_buildkit_otrust-oci0
-  #1 creating container buildx_buildkit_otrust-oci0 0.6s done
-  #1 DONE 7.4s
-  #2 [internal] load build definition from Dockerfile
-  #2 transferring dockerfile: 650B done
-  #2 DONE 0.0s
+  #1 [internal] load build definition from Dockerfile
+  #1 transferring dockerfile: 650B done
+  #1 DONE 0.0s
+  #2 [internal] load metadata for gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
+  #2 DONE 0.4s
   #3 [internal] load metadata for docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #3 ...
-  #4 [internal] load metadata for gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
-  #4 DONE 1.4s
-  #3 [internal] load metadata for docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #3 DONE 1.4s
-  #5 [internal] load .dockerignore
-  #5 transferring context: 47B done
+  #3 DONE 0.8s
+  #4 [internal] load .dockerignore
+  #4 transferring context: 47B done
+  #4 DONE 0.0s
+  #5 [stage-1 1/2] FROM gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
+  #5 resolve gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d done
   #5 DONE 0.0s
-  #6 [internal] load build context
-  #6 transferring context: 2.59kB 0.0s done
+  #6 [build 1/5] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
+  #6 resolve docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320 done
   #6 DONE 0.0s
-  #7 [build 1/5] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #7 resolve docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320 done
-  #7 DONE 0.1s
-  #8 [stage-1 1/2] FROM gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
-  #8 resolve gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d done
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 0B / 51.44MB 0.2s
-  #8 sha256:6dab62daccebca743d55c4bfa4b510251ef624748208222d7a98cdecca366dd8 0B / 292.27kB 0.2s
-  #8 sha256:0a304126184669a27af22f62c89725b6eefdb61cd7de6148e58160edb6c59fd2 0B / 40.33kB 0.2s
-  #8 sha256:9cc52d140132c780b41914674bed78e473976a6bb9adae69364b67f6f3393c0a 0B / 42.72kB 0.2s
-  #8 sha256:9cc52d140132c780b41914674bed78e473976a6bb9adae69364b67f6f3393c0a 42.72kB / 42.72kB 1.2s done
-  #8 sha256:ad3ef71fadeabd1cb426938d8788a109443599c17f473ac91e71b4b8f7fcd0a5 0B / 741.42kB 0.2s
-  #8 sha256:6dab62daccebca743d55c4bfa4b510251ef624748208222d7a98cdecca366dd8 292.27kB / 292.27kB 1.6s done
-  #8 sha256:0a304126184669a27af22f62c89725b6eefdb61cd7de6148e58160edb6c59fd2 40.33kB / 40.33kB 1.6s done
-  #8 sha256:a5dd28e4ab99af0eb3b4addde9da878387b0e4b0aba886752d4e0a936dc30a07 0B / 104.75kB 0.2s
-  #8 sha256:23459927a8c12167a52988a7f8f6942b7c2be309d383e61919be7c08dc478d32 0B / 347.79kB 0.2s
-  #8 sha256:ad3ef71fadeabd1cb426938d8788a109443599c17f473ac91e71b4b8f7fcd0a5 741.42kB / 741.42kB 1.2s done
-  #8 sha256:a5dd28e4ab99af0eb3b4addde9da878387b0e4b0aba886752d4e0a936dc30a07 104.75kB / 104.75kB 0.8s done
-  #8 sha256:11f6af15dafd287fe6e761fd5ca9389b05d76f1eb54dcf39b3d8a7414a988b05 0B / 31.82kB 0.2s
-  #8 sha256:7fe4f5dbd9229efccf92cdbef54f6f5a5c3ac14367a1446924bcc5877ad279d7 0B / 410.89kB 0.2s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 3.15MB / 51.44MB 2.7s
-  #8 sha256:23459927a8c12167a52988a7f8f6942b7c2be309d383e61919be7c08dc478d32 347.79kB / 347.79kB 1.0s done
-  #8 sha256:f2f017459062e7ac1f1d6e104f689fddf30b572ebe0ef6e0a5e8e2ec32c4157d 0B / 154.92kB 0.2s
-  #8 sha256:11f6af15dafd287fe6e761fd5ca9389b05d76f1eb54dcf39b3d8a7414a988b05 31.82kB / 31.82kB 0.6s done
-  #8 sha256:2e1e0e99f0162aaf4ef4aa7d2b5e70dbfa105cf37693f9804e51729a319a7120 0B / 301.86kB 0.2s
-  #8 sha256:f2f017459062e7ac1f1d6e104f689fddf30b572ebe0ef6e0a5e8e2ec32c4157d 154.92kB / 154.92kB 0.8s done
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 6.29MB / 51.44MB 3.6s
-  #8 sha256:7fe4f5dbd9229efccf92cdbef54f6f5a5c3ac14367a1446924bcc5877ad279d7 410.89kB / 410.89kB 1.3s done
-  #8 sha256:ef335559898d8504e466bdbc03ed3edb1daca9c61a33e94d86fb473a0b2490ef 0B / 1.64MB 0.2s
-  #8 sha256:ce349868091de8f995cf362a2bc500bf362f08bc81a4717ff6442cc5707f1a76 0B / 452.10kB 0.2s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 9.29MB / 51.44MB 4.9s
-  #8 sha256:2e1e0e99f0162aaf4ef4aa7d2b5e70dbfa105cf37693f9804e51729a319a7120 301.86kB / 301.86kB 1.1s done
-  #8 sha256:51dfb8c5530cfc91615cc7607df453f92ed4ad5b4d455cc5eb58ca761059a7ee 0B / 181.45kB 0.2s
-  #8 sha256:ce349868091de8f995cf362a2bc500bf362f08bc81a4717ff6442cc5707f1a76 452.10kB / 452.10kB 1.0s done
-  #8 sha256:ef335559898d8504e466bdbc03ed3edb1daca9c61a33e94d86fb473a0b2490ef 1.05MB / 1.64MB 1.2s
-  #8 sha256:8fc9b94d45bd66c489d64c6e5e0fe745afba07e64a5a2c92f14a4b883e789672 0B / 207.07kB 0.2s
-  #8 sha256:ef335559898d8504e466bdbc03ed3edb1daca9c61a33e94d86fb473a0b2490ef 1.64MB / 1.64MB 1.3s done
-  #8 sha256:51dfb8c5530cfc91615cc7607df453f92ed4ad5b4d455cc5eb58ca761059a7ee 181.45kB / 181.45kB 0.8s done
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 12.58MB / 51.44MB 5.0s
-  #8 sha256:54354108d29ac5b050a202843b73987e8e23acbfac61220f135b22db2a241a5c 0B / 92.84kB 0.2s
-  #8 sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257 0B / 4.96MB 0.2s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 15.73MB / 51.44MB 5.4s
-  #8 sha256:8fc9b94d45bd66c489d64c6e5e0fe745afba07e64a5a2c92f14a4b883e789672 207.07kB / 207.07kB 0.9s done
-  #8 sha256:54354108d29ac5b050a202843b73987e8e23acbfac61220f135b22db2a241a5c 92.84kB / 92.84kB 0.7s done
-  #8 sha256:069d1e267530c2e681fbd4d481553b4d05f98082b18fafac86e7f12996dddd0b 0B / 131.91kB 0.2s
-  #8 sha256:dcaa5a89b0ccda4b283e16d0b4d0891cd93d5fe05c6798f7806781a6a2d84354 314B / 314B 0.3s done
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 19.92MB / 51.44MB 5.9s
-  #8 sha256:b839dfae01f66e15c6a8b63520557ed315bdfe036342fa7a0c537259f10d7a9a 0B / 351B 0.2s
-  #8 sha256:b839dfae01f66e15c6a8b63520557ed315bdfe036342fa7a0c537259f10d7a9a 351B / 351B 0.3s done
-  #8 sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257 1.05MB / 4.96MB 1.4s
-  #8 sha256:dd64bf2dd177757451a98fcdc999a339c35dee5d9872d8f4dc69c8f3c4dd0112 0B / 80B 0.2s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 24.12MB / 51.44MB 6.5s
-  #8 sha256:069d1e267530c2e681fbd4d481553b4d05f98082b18fafac86e7f12996dddd0b 131.91kB / 131.91kB 0.8s done
-  #8 sha256:dd64bf2dd177757451a98fcdc999a339c35dee5d9872d8f4dc69c8f3c4dd0112 80B / 80B 0.3s done
-  #8 sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257 2.10MB / 4.96MB 1.7s
-  #8 sha256:52630fc75a18675c530ed9eba5f55eca09b03e91bd5bc15307918bbc1a7e7296 0B / 162B 0.2s
-  #8 sha256:3214acf345c0cc6bbdb56b698a41ccdefc624a09d6beb0d38b5de0b2303ecaf4 0B / 123B 0.2s
-  #8 sha256:52630fc75a18675c530ed9eba5f55eca09b03e91bd5bc15307918bbc1a7e7296 162B / 162B 0.3s done
-  #8 sha256:3214acf345c0cc6bbdb56b698a41ccdefc624a09d6beb0d38b5de0b2303ecaf4 123B / 123B 0.3s done
-  #8 sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257 3.15MB / 4.96MB 2.0s
-  #8 sha256:7c12895b777bcaa8ccae0605b4de635b68fc32d60fa08f421dc3818bf55ee212 0B / 188B 0.2s
-  #8 sha256:2780920e5dbfbe103d03a583ed75345306e572ec5a48cb10361f046767d9f29a 0B / 67B 0.2s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 27.26MB / 51.44MB 7.1s
-  #8 sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257 4.19MB / 4.96MB 2.1s
-  #8 sha256:7c12895b777bcaa8ccae0605b4de635b68fc32d60fa08f421dc3818bf55ee212 188B / 188B 0.3s done
-  #8 sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257 4.96MB / 4.96MB 2.3s done
-  #8 sha256:2780920e5dbfbe103d03a583ed75345306e572ec5a48cb10361f046767d9f29a 67B / 67B 0.4s done
-  #8 sha256:bf7a4185f01524837d19abde915ffde84e64368b250f5b5e9f6f75aea62a11d4 0B / 29.00kB 0.2s
-  #8 sha256:ef49c20a7b35aa995683f311510d35d77e203a2204f84de14a71a6d726e6af73 0B / 440.80kB 0.2s
-  #8 sha256:990a9c434e5e0f11549a8d4a41a1991e621b04e30cd63269adbc97b1dc38fd7e 0B / 12.48kB 0.2s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 31.46MB / 51.44MB 7.5s
-  #8 sha256:990a9c434e5e0f11549a8d4a41a1991e621b04e30cd63269adbc97b1dc38fd7e 12.48kB / 12.48kB 0.3s done
-  #8 sha256:296b5494f17a830dcf9b0da028437305ab7ba3eaca4adf0dec9a463a18950079 0B / 83.84kB 0.2s
-  #8 sha256:bf7a4185f01524837d19abde915ffde84e64368b250f5b5e9f6f75aea62a11d4 29.00kB / 29.00kB 0.7s done
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 34.60MB / 51.44MB 8.0s
-  #8 sha256:66da007fd54f899f0b0c1f648e982220c5227bbb0bfa85df3618a1e0e3cf92be 0B / 64.02kB 0.2s
-  #8 sha256:ef49c20a7b35aa995683f311510d35d77e203a2204f84de14a71a6d726e6af73 440.80kB / 440.80kB 1.1s done
-  #8 sha256:296b5494f17a830dcf9b0da028437305ab7ba3eaca4adf0dec9a463a18950079 83.84kB / 83.84kB 0.7s done
-  #8 sha256:66da007fd54f899f0b0c1f648e982220c5227bbb0bfa85df3618a1e0e3cf92be 64.02kB / 64.02kB 0.5s done
-  #8 extracting sha256:296b5494f17a830dcf9b0da028437305ab7ba3eaca4adf0dec9a463a18950079 0.0s done
-  #8 extracting sha256:990a9c434e5e0f11549a8d4a41a1991e621b04e30cd63269adbc97b1dc38fd7e
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 37.75MB / 51.44MB 8.3s
-  #8 extracting sha256:990a9c434e5e0f11549a8d4a41a1991e621b04e30cd63269adbc97b1dc38fd7e 0.0s done
-  #8 extracting sha256:ef49c20a7b35aa995683f311510d35d77e203a2204f84de14a71a6d726e6af73 0.1s done
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 40.89MB / 51.44MB 8.6s
-  #8 extracting sha256:bf7a4185f01524837d19abde915ffde84e64368b250f5b5e9f6f75aea62a11d4 done
-  #8 extracting sha256:2780920e5dbfbe103d03a583ed75345306e572ec5a48cb10361f046767d9f29a done
-  #8 extracting sha256:7c12895b777bcaa8ccae0605b4de635b68fc32d60fa08f421dc3818bf55ee212 done
-  #8 extracting sha256:3214acf345c0cc6bbdb56b698a41ccdefc624a09d6beb0d38b5de0b2303ecaf4 done
-  #8 extracting sha256:52630fc75a18675c530ed9eba5f55eca09b03e91bd5bc15307918bbc1a7e7296 done
-  #8 extracting sha256:dd64bf2dd177757451a98fcdc999a339c35dee5d9872d8f4dc69c8f3c4dd0112 0.0s done
-  #8 extracting sha256:b839dfae01f66e15c6a8b63520557ed315bdfe036342fa7a0c537259f10d7a9a done
-  #8 extracting sha256:dcaa5a89b0ccda4b283e16d0b4d0891cd93d5fe05c6798f7806781a6a2d84354 done
-  #8 extracting sha256:069d1e267530c2e681fbd4d481553b4d05f98082b18fafac86e7f12996dddd0b 0.0s done
-  #8 extracting sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257
-  #8 extracting sha256:8f9d56b2cdc6271d2081cd7d118a289f1629dafbb95094c1c425e7d3c02a8257 0.3s done
-  #8 extracting sha256:54354108d29ac5b050a202843b73987e8e23acbfac61220f135b22db2a241a5c 0.0s done
-  #8 extracting sha256:8fc9b94d45bd66c489d64c6e5e0fe745afba07e64a5a2c92f14a4b883e789672 0.0s done
-  #8 extracting sha256:51dfb8c5530cfc91615cc7607df453f92ed4ad5b4d455cc5eb58ca761059a7ee 0.0s done
-  #8 extracting sha256:ce349868091de8f995cf362a2bc500bf362f08bc81a4717ff6442cc5707f1a76 0.0s done
-  #8 extracting sha256:ef335559898d8504e466bdbc03ed3edb1daca9c61a33e94d86fb473a0b2490ef 0.0s done
-  #8 extracting sha256:2e1e0e99f0162aaf4ef4aa7d2b5e70dbfa105cf37693f9804e51729a319a7120
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 44.04MB / 51.44MB 8.9s
-  #8 extracting sha256:2e1e0e99f0162aaf4ef4aa7d2b5e70dbfa105cf37693f9804e51729a319a7120 0.0s done
-  #8 extracting sha256:f2f017459062e7ac1f1d6e104f689fddf30b572ebe0ef6e0a5e8e2ec32c4157d 0.0s done
-  #8 extracting sha256:7fe4f5dbd9229efccf92cdbef54f6f5a5c3ac14367a1446924bcc5877ad279d7 0.0s done
-  #8 extracting sha256:11f6af15dafd287fe6e761fd5ca9389b05d76f1eb54dcf39b3d8a7414a988b05 0.0s done
-  #8 extracting sha256:23459927a8c12167a52988a7f8f6942b7c2be309d383e61919be7c08dc478d32 0.0s done
-  #8 extracting sha256:a5dd28e4ab99af0eb3b4addde9da878387b0e4b0aba886752d4e0a936dc30a07 done
-  #8 extracting sha256:ad3ef71fadeabd1cb426938d8788a109443599c17f473ac91e71b4b8f7fcd0a5 0.0s done
-  #8 extracting sha256:9cc52d140132c780b41914674bed78e473976a6bb9adae69364b67f6f3393c0a
-  #8 extracting sha256:9cc52d140132c780b41914674bed78e473976a6bb9adae69364b67f6f3393c0a 0.0s done
-  #8 extracting sha256:0a304126184669a27af22f62c89725b6eefdb61cd7de6148e58160edb6c59fd2 0.0s done
-  #8 extracting sha256:6dab62daccebca743d55c4bfa4b510251ef624748208222d7a98cdecca366dd8 0.0s done
-  #8 extracting sha256:66da007fd54f899f0b0c1f648e982220c5227bbb0bfa85df3618a1e0e3cf92be 0.0s done
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 48.23MB / 51.44MB 9.3s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 51.44MB / 51.44MB 9.8s
-  #8 sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 51.44MB / 51.44MB 9.8s done
-  #8 extracting sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4
-  #8 ...
-  #7 [build 1/5] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #7 sha256:540e7b237472643407cee3c577ce2973446235ad6fe28c358a4268067d649c21 154B / 154B 0.1s done
-  #7 sha256:96cd51eaaf9aa219c943da6b482f612cd215cfa5124b23e4bb657cef8e9c475f 848B / 848B 0.3s done
-  #7 sha256:b40f053b9dceeb30143f4175a0fa55e28ea8b614682c741498f9353504651427 9.36MB / 9.36MB 1.6s done
-  #7 sha256:f029f71136490380f66e159a259edc8d9da989ce455f5f410c1a3e95981b1d0e 25.00MB / 25.00MB 2.1s done
-  #7 sha256:9a94325f190ee99d3bf1b6b4854a549f64e07ca224495a92a1f75302ee33b194 2.46kB / 2.46kB 0.4s done
-  #7 sha256:c7690fc445600d3a3145a823fa119377a8999bc2e3224af729c6d14d84a6a322 160B / 160B 0.2s done
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 84.93MB / 156.41MB 9.6s
-  #7 sha256:470ed8566c78f4cc209ea0e7e534cfed2b1a537a57f4e3d2fda403c521b5d373 24.15MB / 24.15MB 7.7s done
-  #7 sha256:8a38824eedc553ba80cf1eb7df278a003340f7409fd4b9002bce07db8840a9a2 28.94MB / 28.94MB 2.2s done
-  #7 extracting sha256:8a38824eedc553ba80cf1eb7df278a003340f7409fd4b9002bce07db8840a9a2 0.8s done
-  #7 extracting sha256:470ed8566c78f4cc209ea0e7e534cfed2b1a537a57f4e3d2fda403c521b5d373 0.9s done
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 96.47MB / 156.41MB 10.1s
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 109.05MB / 156.41MB 10.5s
-  #7 ...
-  #8 [stage-1 1/2] FROM gcr.io/distroless/java21-debian12:nonroot@sha256:7e37784d94dccbf5ccb195c73b295f5ad00cd266512dfbac12eb9c3c28f8077d
-  #8 extracting sha256:eaf4995e5cf005c9de30a61b71429d62a466acb6192dc59bacbe83a114f54bf4 1.5s done
-  #8 DONE 11.4s
-  #7 [build 1/5] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 120.59MB / 156.41MB 11.0s
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 131.07MB / 156.41MB 11.3s
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 142.61MB / 156.41MB 11.7s
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 154.14MB / 156.41MB 12.2s
-  #7 sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 156.41MB / 156.41MB 12.3s done
-  #7 extracting sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f
-  #7 extracting sha256:328631f65d6699dfa69c6271a83beec75204e621b8e4f7aa6db285127dab330f 1.6s done
-  #7 DONE 14.5s
-  #7 [build 1/5] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #7 extracting sha256:c7690fc445600d3a3145a823fa119377a8999bc2e3224af729c6d14d84a6a322 done
-  #7 extracting sha256:9a94325f190ee99d3bf1b6b4854a549f64e07ca224495a92a1f75302ee33b194 done
-  #7 extracting sha256:f029f71136490380f66e159a259edc8d9da989ce455f5f410c1a3e95981b1d0e
-  #7 extracting sha256:f029f71136490380f66e159a259edc8d9da989ce455f5f410c1a3e95981b1d0e 0.5s done
-  #7 DONE 15.0s
-  #7 [build 1/5] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #7 extracting sha256:b40f053b9dceeb30143f4175a0fa55e28ea8b614682c741498f9353504651427
-  #7 extracting sha256:b40f053b9dceeb30143f4175a0fa55e28ea8b614682c741498f9353504651427 0.3s done
-  #7 DONE 15.2s
-  #7 [build 1/5] FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320
-  #7 extracting sha256:96cd51eaaf9aa219c943da6b482f612cd215cfa5124b23e4bb657cef8e9c475f done
-  #7 extracting sha256:540e7b237472643407cee3c577ce2973446235ad6fe28c358a4268067d649c21 done
-  #7 DONE 15.3s
-  #9 [build 2/5] WORKDIR /src
-  #9 DONE 0.1s
-  #10 [build 3/5] COPY pom.xml .
-  #10 DONE 0.0s
-  #11 [build 4/5] COPY src src
-  #11 DONE 0.0s
-  #12 [build 5/5] RUN mvn -q -B -ntp package -DskipTests $([ "clean" = vulnerable ] && echo -Pvulnerable)
-  #12 DONE 16.3s
-  #13 [stage-1 2/2] COPY --from=build /src/target/app.jar /app/app.jar
-  #13 DONE 0.0s
-  #14 exporting to oci image format
-  #14 exporting layers
-  #14 exporting layers 0.3s done
-  #14 exporting manifest sha256:0f09d70c048307193b34f6e21e8461d72a8f85f2ea8cf01d153886b3c4661c73 done
-  #14 exporting config sha256:cb7b23020038ed74e9b8f34e9865f736d6c075b890828c9a6d7d25c6e51c3ff6 done
-  #14 exporting attestation manifest sha256:8b3b58ca8ed1a7d3fd474da5db44a62f80e2947c3217a9a25a96228920ab088d done
-  #14 exporting manifest list sha256:58def2b2b1cd9511cae0ce8f9ef859f1f773bcc6d18aba6c726630c82eabc4f2 done
-  #14 sending tarball
-  #14 sending tarball 0.6s done
-  #14 DONE 0.9s
+  #7 [internal] load build context
+  #7 transferring context: 2.59kB 0.0s done
+  #7 DONE 0.0s
+  #8 [build 3/5] COPY pom.xml .
+  #8 CACHED
+  #9 [build 4/5] COPY src src
+  #9 CACHED
+  #10 [build 5/5] RUN mvn -q -B -ntp package -DskipTests $([ "clean" = vulnerable ] && echo -Pvulnerable)
+  #10 CACHED
+  #11 [build 2/5] WORKDIR /src
+  #11 CACHED
+  #12 [stage-1 2/2] COPY --from=build /src/target/app.jar /app/app.jar
+  #12 CACHED
+  #13 exporting to oci image format
+  #13 exporting layers done
+  #13 exporting manifest sha256:0f09d70c048307193b34f6e21e8461d72a8f85f2ea8cf01d153886b3c4661c73 done
+  #13 exporting config sha256:cb7b23020038ed74e9b8f34e9865f736d6c075b890828c9a6d7d25c6e51c3ff6 done
+  #13 exporting attestation manifest sha256:87c717a9a5bb4a9e30a189ff5ac982d5b8d8c6847ca716a8e327e00dba0f6644 done
+  #13 exporting manifest list sha256:cf14aeab82c48de26391a618a4efa7d2f773730efecf67c0f9c1d60904bcd8cd done
+  #13 sending tarball
+  #13 sending tarball 0.7s done
+  #13 DONE 0.7s
   [Pipeline] }
   [Pipeline] // stage
   [Pipeline] stage
@@ -258,10 +95,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   Masking supported pattern matches of $OTRUST_KEY
   [Pipeline] {
   [Pipeline] sh
-  + curl -fsSLo otrust-assess.sh https://raw.githubusercontent.com/dario-mr/open-trust/5b8b5f59eb32e34f693324230c739c23a119062f/ci-templates/generic/otrust-assess.sh
+  + curl -fsSLo otrust-assess.sh https://raw.githubusercontent.com/dario-mr/open-trust/56a5c3659b0fa545e79c85b04618abf3ff4b8490/ci-templates/generic/otrust-assess.sh
   + OTRUST_IMAGE=image.oci.tar sh otrust-assess.sh
   Subject   sha256:0f09d70c048307193b34f6e21e8461d72a8f85f2ea8cf01d153886b3c4661c73
-  Source    https://github.com/dario-mr/open-trust-demo.git @ 3f3f46fb2a380e2abbd385bebc6eb2b4348e6c4f+dirty (generic)
+  Source    https://github.com/dario-mr/open-trust-demo.git @ 806398b7f164f9fcb1ef07ab90fefb8d7349cac8 (jenkins)
   Profile   supply-chain-baseline 1.0.0
   ✔ sbom             PASSED
   ✔ vulns            PASSED
@@ -294,13 +131,14 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
 [1m== Buyer: what the certificate records about the Jenkins run[0m
 {
   "ci": {
-    "provider": "generic",
+    "provider": "jenkins",
     "repo": "https://github.com/dario-mr/open-trust-demo.git",
-    "revision": "3f3f46fb2a380e2abbd385bebc6eb2b4348e6c4f+dirty"
+    "revision": "806398b7f164f9fcb1ef07ab90fefb8d7349cac8",
+    "runUrl": "http://localhost:18080/job/open-trust-demo/1/"
   },
   "trustLevel": "L1",
   "agentDigest": {
-    "sha256": "88e66972f560983c8c526dd296c938b94ec216ace18d05ff908f2a4986c005fd"
+    "sha256": "f1640e9d7c54d25791d2c076f610a526c9212f7e55857aedfb563e97073827a4"
   }
 }
 
@@ -309,10 +147,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key WvVg724ACTIUjJIUsDae9cxNOrG1SL0bKzfqWXt8QOI=)
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key uw5AMKi+eyp3owtgCPLZD9lUPN/uupyTKZs/VkDWHJY=)
     ✔ For exactly this image: sha256:0f09d70c048307193b34f6e21e8461d72a8f85f2ea8cf01d153886b3c4661c73
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 3f3f46fb2a380e2abbd385bebc6eb2b4348e6c4f+dirty (generic)
-    ✔ Assessed 2026-11-21T16:27:24Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T16:27:24Z
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 806398b7f164f9fcb1ef07ab90fefb8d7349cac8 (jenkins)
+    ✔ Assessed 2026-11-21T16:42:45Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T16:42:45Z
     ✔ Trust level L1: whoever holds the vendor's key signed it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
   
@@ -324,7 +162,7 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/java sha256:7d0e2b65102ae62df716d06ed5cc66d095773416b880aec6771d1b6af70dab0e (60 rules, fetched 2026-11-21T16:27:21Z)
+    ℹ SAST rules p/java sha256:7d0e2b65102ae62df716d06ed5cc66d095773416b880aec6771d1b6af70dab0e (60 rules, fetched 2026-11-21T16:42:42Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -345,10 +183,10 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key WvVg724ACTIUjJIUsDae9cxNOrG1SL0bKzfqWXt8QOI=)
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key uw5AMKi+eyp3owtgCPLZD9lUPN/uupyTKZs/VkDWHJY=)
     ✔ For exactly this image: sha256:0f09d70c048307193b34f6e21e8461d72a8f85f2ea8cf01d153886b3c4661c73
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 3f3f46fb2a380e2abbd385bebc6eb2b4348e6c4f+dirty (generic)
-    ✔ Assessed 2026-11-21T16:27:24Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T16:27:24Z
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 806398b7f164f9fcb1ef07ab90fefb8d7349cac8 (jenkins)
+    ✔ Assessed 2026-11-21T16:42:45Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T16:42:45Z
     ✔ Trust level L1: whoever holds the vendor's key signed it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
     ✔ Your own scan of the image agrees with the certificate, and its packages match the vendor's SBOM
@@ -361,7 +199,7 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/java sha256:7d0e2b65102ae62df716d06ed5cc66d095773416b880aec6771d1b6af70dab0e (60 rules, fetched 2026-11-21T16:27:21Z)
+    ℹ SAST rules p/java sha256:7d0e2b65102ae62df716d06ed5cc66d095773416b880aec6771d1b6af70dab0e (60 rules, fetched 2026-11-21T16:42:42Z)
   
   Your re-check today: PASSED (your vulnerability DB 2026-11-21T13:02:47.203212637Z, the vendor's 2026-11-21T13:02:47.203212637Z)
     ✔ Nothing new, nothing missing
@@ -380,4 +218,3 @@ give vendor.pub to customers for their trust policy; keep vendor.key secret
 → VERIFIED, as expected
 
 [1m== Summary: Jenkins build SUCCESS; 2 as expected, 0 not (work dir /Users/dmauri/.cache/otrust-jenkins)[0m
-exit=0
