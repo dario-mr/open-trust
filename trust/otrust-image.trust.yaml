@@ -1,0 +1,10 @@
+# Trust policy for otrust's own image certificate (release asset otrust-image.certificate.sigstore.json):
+# accepts the Open Trust assessor at a release tag, assessing this repository on a GitHub-hosted runner.
+# The assessor and the source share this repository, so the level is ci-identity, not isolated-assessor.
+minTrustLevel: L1+ci-identity
+signers:
+  - name: otrust release, self-assessed
+    issuer: https://token.actions.githubusercontent.com
+    sourceRepo: https://github.com/dario-mr/open-trust
+    buildSigner: ^https://github\.com/dario-mr/open-trust/\.github/workflows/assess\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$
+    requireHostedRunner: true
