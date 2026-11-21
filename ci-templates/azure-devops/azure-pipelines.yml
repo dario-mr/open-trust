@@ -18,8 +18,8 @@ pool:
 variables:
   # the generic script, pinned by commit; the otrust release it runs, pinned by digest
   OTRUST_TEMPLATE: https://raw.githubusercontent.com/dario-mr/open-trust/<commit>/ci-templates/generic/otrust-assess.sh
-  OTRUST_VERSION: v0.1.8
-  OTRUST_SHA256: 877b107c30f50c74824927b9fe75d7ebc7a842f35201259d1625a34de799706c # otrust-linux-amd64
+  OTRUST_VERSION: v0.1.9
+  OTRUST_SHA256: 2982f827f7c517e5c887a032e3240fde4e4f4c184667f8c4ad279a32f925ab34 # otrust-linux-amd64
   OTRUST_SUBJECT: registry.example.com/acme/svc
 
 steps:
