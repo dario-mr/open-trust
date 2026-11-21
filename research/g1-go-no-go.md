@@ -48,6 +48,8 @@ The success condition ("a developer can integrate the tool, produce a certificat
 
 ## Recommendation
 
+> **Superseded 2026-11-21:** demand validation was dropped in favour of building first. The current roadmap is in [poc-plan.md](../poc-plan.md) §9. The recommendation below is kept as the G1 record.
+
 1. **Go to demand validation before more engineering.** The technology is not the risk. Show the consumer guide and the demo to 3–5 security and procurement people on the buyer side, and to 2–3 vendors. Ask whether `L1+ci-identity` is worth anything to them, or only isolation is.
 2. If demand holds, the next technical steps, in order:
    - a CI-agnostic isolated assessor (a separate assessor runner, or GitLab component identity if it ever ships), which decides portability;

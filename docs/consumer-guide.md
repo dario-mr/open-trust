@@ -17,9 +17,20 @@ otrust verify certificate.sigstore.json --image image.oci.tar --trust-policy tru
   --trusted-root trusted-root.json    # Sigstore public-good root: `gh attestation trusted-root`
   [--online]                          # also check the signed revocation list
   [--evidence otrust-out/]            # if the vendor shares the raw evidence
+  [--recheck]                         # scan the image yourself and compare (needs Docker)
 ```
 
 Verification needs no network when you pass the image as a file. A registry reference pulls it first, and the certificate must name that image (a different digest gives `ARTIFACT_MISMATCH`). `--online` adds the one other network call, which fetches the signed revocation list. `--evidence` re-checks the vendor's raw scan output against the certificate and re-runs the policy, which catches a summary that does not match its evidence.
+
+### Re-check: don't take the vendor's word for the image
+
+`--recheck` runs the profile's pinned SBOM and vulnerability scanners yourself, on the image you received, with today's vulnerability database (about 20 seconds plus the database download). It works the same whatever CI the vendor used and whatever trust level the certificate has, because it needs no trust in the vendor's pipeline.
+
+- **A vulnerability that was public well before the vendor's scan but is missing from the certificate** gives `RECHECK_MISMATCH`. The vendor's scan should have found it. A vulnerability published less than 30 days before the vendor's scan counts as new instead, since severities are often re-rated in the first weeks.
+- **With `--evidence`**, it also compares the packages in the image with the vendor's SBOM. Any difference gives `RECHECK_MISMATCH`.
+- **A vulnerability published after the vendor's scan** is not the vendor's fault: an honest certificate for an image that fails today gives `OUTDATED`. This is the result to gate deployments on.
+
+The re-check covers only the image checks. Secrets and static analysis need the source, which you don't have.
 
 A sample `trust.yaml` that accepts only the Open Trust assessor at a pinned version, assessing one vendor repository on a GitHub-hosted runner:
 
@@ -59,6 +70,7 @@ Every level is **vendor-attested**. Open Trust does not audit the vendor. A high
 | Assessment on a tampered self-hosted runner | Caught | Caught only where the CI reports the runner type | Not caught |
 | Run a modified assessor, or sign made-up results | Caught | **Not caught** | **Not caught** |
 | Hide a dependency or source before the scan | **Not caught** | **Not caught** | **Not caught** |
+| Under-report the image's packages or known vulnerabilities | Caught with `--recheck` | Caught with `--recheck` | Caught with `--recheck` |
 
 ## Reading the result
 
@@ -76,6 +88,8 @@ The verifier prints every check, plus the exceptions the vendor accepted (each w
 | `EXPIRED` | 17 | Older than 30 days. Ask the vendor for a fresh assessment. |
 | `REVOKED` | 18 | The artifact, the assessor binary or the signer was revoked |
 | `POLICY_UNKNOWN` / `MALFORMED` | 19 / 20 | This verifier does not know the profile, or the certificate is not a valid Open Trust certificate |
+| `RECHECK_MISMATCH` | 21 | `--recheck`: your own scan contradicts the certificate (an unreported known vulnerability, or different packages) |
+| `OUTDATED` | 22 | `--recheck`: the certificate is honest, but the image fails the profile with today's vulnerability data |
 
 ## What to ask the vendor for
 

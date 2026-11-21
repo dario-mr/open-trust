@@ -19,11 +19,11 @@ The vendor side lives in a separate repository, **[dario-mr/open-trust-demo](htt
 | Key-signed (`L1`), any CI | `otrust keygen --out vendor` then `otrust assess --key vendor.key --image img.oci.tar --source .` |
 | Keyless (`L1+ci-identity`), GitHub Actions, GitLab CI (`ci-templates/gitlab/otrust.gitlab-ci.yml`), or any CI exposing `SIGSTORE_ID_TOKEN` | `otrust assess --keyless --image img.oci.tar --source .` |
 | Reusable workflow (GitHub), `L1+isolated-assessor` when called from another repository | `uses: dario-mr/open-trust/.github/workflows/assess.yml@<sha>` with `image-ref: ghcr.io/acme/svc@sha256:…` or an image artifact (see the header of [assess.yml](.github/workflows/assess.yml)) |
-| Customer | `otrust verify cert.sigstore.json --image img.oci.tar --trust-policy trust.yaml [--trusted-root root.json] [--evidence dir] [--revocations file] [--online]` |
+| Customer | `otrust verify cert.sigstore.json --image img.oci.tar --trust-policy trust.yaml [--trusted-root root.json] [--evidence dir] [--revocations file] [--online] [--recheck]` |
 
 `--image` takes an OCI layout (directory or tar) or a registry reference pinned by digest (`ghcr.io/acme/svc@sha256:…`). A tag is refused, because it can move. Registry credentials come from the Docker config. Verifying by reference pulls the image, so for fully offline verification pass a local layout.
 
-The scanners run in pinned containers, so Docker is required on the assessing side.
+The scanners run in pinned containers, so Docker is required on the assessing side, and on the buyer's side for `--recheck`, which re-runs the image scanners and compares the results with the certificate ([consumer guide](docs/consumer-guide.md#re-check-dont-take-the-vendors-word-for-the-image)).
 
 **Releases.** [`release.yml`](.github/workflows/release.yml) builds `otrust` on a version tag and attests its build provenance. Check a downloaded binary with `gh attestation verify otrust-linux-amd64 -R dario-mr/open-trust`. The assessors build `otrust` the same way, so a certificate's `agentDigest` is the digest of the released linux/amd64 binary for that revision.
 

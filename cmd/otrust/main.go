@@ -177,6 +177,7 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (needed for keyless/CI-signed certificates)")
 	fs.StringVar(&o.Revocations, "revocations", "", "revocations.json: your own list, or a downloaded signed Open Trust list")
 	fs.BoolVar(&o.Online, "online", false, "fetch the signed Open Trust revocation list (the only network access)")
+	fs.BoolVar(&o.Recheck, "recheck", false, "re-run the image scanners yourself (needs docker; downloads the vulnerability DB) and compare with the certificate")
 	// flags may follow the positional certificate path
 	var pos []string
 	for len(args) > 0 {
@@ -249,6 +250,25 @@ func printReport(w io.Writer, r *verify.Report) {
 			fmt.Fprintln(w, "✔ Evidence    digests match and the policy re-evaluates to the same results")
 		}
 	}
+	if rc := r.Recheck; rc != nil {
+		fmt.Fprintf(w, "%s Re-check    your own scan of the image today: %s (your vulnerability DB %s, vendor's %s)\n",
+			ok(rc.MismatchFree()), rc.Result, orDash(rc.DB), orDash(rc.VendorDB))
+		if rc.PackagesCompared && len(rc.PackagesMissing)+len(rc.PackagesExtra) == 0 {
+			fmt.Fprintln(w, "  Packages    identical to the vendor's SBOM")
+		}
+		for _, x := range rc.PackagesMissing {
+			fmt.Fprintf(w, "  Not in SBOM %s\n", x)
+		}
+		for _, x := range rc.PackagesExtra {
+			fmt.Fprintf(w, "  Not in image %s\n", x)
+		}
+		for _, x := range rc.Unreported {
+			fmt.Fprintf(w, "  Unreported  %s\n", x)
+		}
+		for _, x := range rc.New {
+			fmt.Fprintf(w, "  New since   %s\n", x)
+		}
+	}
 	for _, n := range r.Notes {
 		fmt.Fprintf(w, "ℹ %s\n", n)
 	}
@@ -264,6 +284,7 @@ var order = map[verify.Code]int{
 	verify.InvalidSignature: 1, verify.UntrustedSigner: 2, verify.Malformed: 3, verify.PolicyUnknown: 4,
 	verify.ArtifactMismatch: 5, verify.TrustLevelTooLow: 6, verify.Revoked: 7, verify.Expired: 8,
 	verify.EvidenceMissing: 9, verify.EvidenceMismatch: 9, verify.AssessmentFailed: 10,
+	verify.RecheckMismatch: 11, verify.Outdated: 12,
 }
 
 func orDash(s string) string {

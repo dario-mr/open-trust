@@ -142,10 +142,38 @@ func tail(b []byte, n int) []byte {
 	return b
 }
 
-// Run executes all scanners. It writes the SBOM into WorkDir because trivy scans that file.
-func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) {
+// ScanImage runs only the image-based scanners (SBOM, vulnerabilities, trivy DB version). A buyer
+// re-runs exactly these to re-check a certificate: they need the image, not the vendor's source.
+// It writes the SBOM into WorkDir because trivy scans that file.
+func (r *Runner) ScanImage(ctx context.Context, syftScheme string) (*Evidence, error) {
 	ev := &Evidence{Commands: map[string][]string{}}
 	var err error
+	step := func(name string, out *json.RawMessage, image string, args ...string) {
+		if err != nil {
+			return
+		}
+		var cmd []string
+		*out, cmd, err = r.docker(ctx, image, nil, nil, args...)
+		ev.Commands[name] = cmd
+	}
+	step("sbom", &ev.SBOM, r.Tools.Syft.Image,
+		"scan", syftScheme+":/subject", "-o", "cyclonedx-json", "-q")
+	if err == nil {
+		err = os.WriteFile(filepath.Join(r.WorkDir, "sbom.cdx.json"), ev.SBOM, 0o644)
+	}
+	step("vulns", &ev.Vulns, r.Tools.Trivy.Image,
+		"sbom", "--quiet", "--format", "json", "/work/sbom.cdx.json")
+	step("trivy-db", &ev.TrivyDB, r.Tools.Trivy.Image,
+		"version", "--format", "json")
+	return ev, err
+}
+
+// Run executes all scanners.
+func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) {
+	ev, err := r.ScanImage(ctx, syftScheme)
+	if err != nil {
+		return ev, err
+	}
 	var mounts []string // per-step extra mounts; only the SAST step sets them
 	step := func(name string, out *json.RawMessage, image string, okExit []int, args ...string) {
 		if err != nil {
@@ -156,15 +184,6 @@ func (r *Runner) Run(ctx context.Context, syftScheme string) (*Evidence, error) 
 		ev.Commands[name] = cmd
 	}
 
-	step("sbom", &ev.SBOM, r.Tools.Syft.Image, nil,
-		"scan", syftScheme+":/subject", "-o", "cyclonedx-json", "-q")
-	if err == nil {
-		err = os.WriteFile(filepath.Join(r.WorkDir, "sbom.cdx.json"), ev.SBOM, 0o644)
-	}
-	step("vulns", &ev.Vulns, r.Tools.Trivy.Image, nil,
-		"sbom", "--quiet", "--format", "json", "/work/sbom.cdx.json")
-	step("trivy-db", &ev.TrivyDB, r.Tools.Trivy.Image, nil,
-		"version", "--format", "json")
 	// --offline-scan: a secrets scan must not resolve dependencies over the network (leaks names; rate limits)
 	secretArgs := []string{"fs", "--quiet", "--offline-scan", "--scanners", "secret", "--format", "json"}
 	sastArgs := []string{"semgrep", "scan", "--metrics=off", "--quiet", "--json", "--config", rulesMount}

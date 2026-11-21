@@ -45,13 +45,15 @@ const (
 	EvidenceMissing  Code = "EVIDENCE_MISSING"
 	EvidenceMismatch Code = "EVIDENCE_MISMATCH"
 	AssessmentFailed Code = "ASSESSMENT_FAILED"
+	RecheckMismatch  Code = "RECHECK_MISMATCH" // --recheck: the image contradicts the certificate
+	Outdated         Code = "OUTDATED"         // --recheck: honest certificate, but the image fails today
 )
 
 // ExitCodes are stable for scripting. 2 is reserved for usage errors.
 var ExitCodes = map[Code]int{
 	OK: 0, AssessmentFailed: 10, InvalidSignature: 11, UntrustedSigner: 12, TrustLevelTooLow: 13,
 	ArtifactMismatch: 14, EvidenceMismatch: 15, EvidenceMissing: 16, Expired: 17, Revoked: 18,
-	PolicyUnknown: 19, Malformed: 20,
+	PolicyUnknown: 19, Malformed: 20, RecheckMismatch: 21, Outdated: 22,
 }
 
 type Options struct {
@@ -62,6 +64,7 @@ type Options struct {
 	TrustedRoot string // Sigstore trusted_root.json; required for certificate-signed bundles
 	Revocations string // optional: your own revocations.json, or a downloaded signed list
 	Online      bool   // fetch the signed Open Trust revocation list (RevocationsURL)
+	Recheck     bool   // re-run the image scanners (needs docker) and compare with the certificate
 	Now         time.Time
 }
 
@@ -76,6 +79,7 @@ type Report struct {
 	SubjectDigest     string
 	Predicate         *Predicate
 	EvidenceChecked   bool
+	Recheck           *Recheck // set with Options.Recheck once the assessment itself passed
 	Notes             []string
 }
 
@@ -206,7 +210,11 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	layoutPath := o.Image
 	if subject.IsRef(o.Image) {
 		// the only other network access besides --online; a local layout keeps verify offline
-		dir, err := os.MkdirTemp("", "otrust-verify-image-")
+		mk := os.MkdirTemp
+		if o.Recheck {
+			mk = dockerVisibleTemp // the scanners' containers mount the pulled layout
+		}
+		dir, err := mk("", "otrust-verify-image-")
 		if err != nil {
 			return nil, err
 		}
@@ -295,6 +303,31 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	}
 	if !slices.Contains(p.VerifiedLevels, scb.VSALevel) {
 		return r.fail(Malformed, "PASSED without verified level %s", scb.VSALevel), nil
+	}
+
+	// 8. re-check (optional): the buyer's own scan of the image, today
+	if o.Recheck {
+		fresh, err := scanImage(ctx, layoutPath, img)
+		if err != nil {
+			return nil, fmt.Errorf("re-check: %w", err)
+		}
+		var vendorSBOM []byte
+		if r.EvidenceChecked { // digest-checked above, so these are the vendor's actual bytes
+			if vendorSBOM, err = os.ReadFile(filepath.Join(o.Evidence, statement.EvidenceFiles["sbom"])); err != nil {
+				return nil, err
+			}
+		} else {
+			r.Notes = append(r.Notes, "re-check without --evidence: packages not compared with the vendor's SBOM")
+		}
+		if r.Recheck, err = compareRecheck(ctx, p, r.SubjectDigest, fresh, vendorSBOM, now); err != nil {
+			return nil, err
+		}
+		if why := r.Recheck.mismatch(); why != "" {
+			return r.fail(RecheckMismatch, "%s", why), nil
+		}
+		if r.Recheck.Result == "FAILED" {
+			return r.fail(Outdated, "the certificate was honest, but the image fails the profile with today's vulnerability data"), nil
+		}
 	}
 	r.Code = OK
 	return r, nil
