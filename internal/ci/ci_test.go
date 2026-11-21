@@ -74,3 +74,38 @@ func TestDetectGitLab(t *testing.T) {
 		t.Fatalf("got %+v\nwant %+v", e, want)
 	}
 }
+
+func TestDetectJenkinsAndAzureDevOps(t *testing.T) {
+	for name, c := range map[string]struct {
+		env  map[string]string
+		want Env
+	}{
+		"jenkins": {map[string]string{"JENKINS_URL": "https://ci.example.com/", "GIT_URL": "https://bot:s3cret@git.example.com/acme/svc.git",
+			"GIT_COMMIT": "abc123", "BUILD_URL": "https://ci.example.com/job/svc/7/"},
+			Env{Provider: "jenkins", Repo: "https://git.example.com/acme/svc.git", Revision: "abc123", RunURL: "https://ci.example.com/job/svc/7/"}},
+		"azure-devops": {map[string]string{"TF_BUILD": "True", "BUILD_REPOSITORY_URI": "https://dev.azure.com/acme/Svc%20Team/_git/svc",
+			"BUILD_SOURCEVERSION": "abc123", "SYSTEM_COLLECTIONURI": "https://dev.azure.com/acme/", "SYSTEM_TEAMPROJECT": "Svc Team", "BUILD_BUILDID": "42"},
+			Env{Provider: "azure-devops", Repo: "https://dev.azure.com/acme/Svc%20Team/_git/svc", Revision: "abc123",
+				RunURL: "https://dev.azure.com/acme/Svc%20Team/_build/results?buildId=42"}},
+	} {
+		fakeEnv(t, c.env)
+		e, err := Detect(context.Background(), t.TempDir(), "", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if e != c.want {
+			t.Errorf("%s: got %+v\nwant %+v", name, e, c.want)
+		}
+	}
+}
+
+func TestRepoCredentialsNeverRecorded(t *testing.T) {
+	fakeEnv(t, map[string]string{})
+	e, _ := Detect(context.Background(), t.TempDir(), "https://oauth2:glpat-x@gitlab.com/acme/svc", "abc")
+	if e.Repo != "https://gitlab.com/acme/svc" {
+		t.Fatalf("got %q", e.Repo)
+	}
+	if e, _ := Detect(context.Background(), t.TempDir(), "git@github.com:acme/svc.git", "abc"); e.Repo != "git@github.com:acme/svc.git" {
+		t.Fatalf("scp-style remote changed: %q", e.Repo)
+	}
+}

@@ -1,5 +1,7 @@
 // Package ci identifies the CI environment, the source revision, and the CI's OIDC identity token.
-// This is the only CI-specific code (poc-plan.md D8). Providers: GitHub Actions, GitLab CI, generic.
+// This is the only CI-specific code (poc-plan.md D8). Providers: GitHub Actions, GitLab CI, Jenkins,
+// Azure DevOps, generic. Jenkins and Azure DevOps only add provenance details (repo, commit, run URL):
+// Fulcio accepts neither CI's identity, so they sign with a key, at L1.
 package ci
 
 import (
@@ -16,7 +18,7 @@ import (
 )
 
 type Env struct {
-	Provider string `json:"provider"` // "generic" | "github" | "gitlab"
+	Provider string `json:"provider"` // "generic" | "github" | "gitlab" | "jenkins" | "azure-devops"
 	Repo     string `json:"repo"`
 	Revision string `json:"revision"`
 	RunURL   string `json:"runUrl,omitempty"`
@@ -43,6 +45,14 @@ func Detect(ctx context.Context, sourceDir, repo, revision string) (Env, error) 
 			RunURL:   fmt.Sprintf("%s/%s/actions/runs/%s/attempts/%s", server, Getenv("GITHUB_REPOSITORY"), Getenv("GITHUB_RUN_ID"), Getenv("GITHUB_RUN_ATTEMPT")),
 			Runner:   Getenv("RUNNER_ENVIRONMENT"),
 		}
+	case Getenv("TF_BUILD") == "True":
+		e = Env{Provider: "azure-devops", Repo: Getenv("BUILD_REPOSITORY_URI"), Revision: Getenv("BUILD_SOURCEVERSION")}
+		if c, p, id := Getenv("SYSTEM_COLLECTIONURI"), Getenv("SYSTEM_TEAMPROJECT"), Getenv("BUILD_BUILDID"); c != "" && id != "" {
+			e.RunURL = strings.TrimSuffix(c, "/") + "/" + url.PathEscape(p) + "/_build/results?buildId=" + id
+		}
+	case Getenv("JENKINS_URL") != "":
+		// GIT_URL and GIT_COMMIT are set by the git plugin's checkout; otherwise git in sourceDir fills them
+		e = Env{Provider: "jenkins", Repo: Getenv("GIT_URL"), Revision: Getenv("GIT_COMMIT"), RunURL: Getenv("BUILD_URL")}
 	}
 	if repo != "" {
 		e.Repo = repo
@@ -64,7 +74,19 @@ func Detect(ctx context.Context, sourceDir, repo, revision string) (Env, error) 
 	if e.Repo == "" {
 		e.Repo, _ = git(ctx, sourceDir, "remote", "get-url", "origin") // optional
 	}
+	e.Repo = withoutCredentials(e.Repo)
 	return e, nil
+}
+
+// withoutCredentials drops user:token@ from a repository URL. CI checkouts often embed a token there,
+// and the repository goes into a signed certificate, and with keyless signing into a public log.
+func withoutCredentials(repo string) string {
+	u, err := url.Parse(repo)
+	if err != nil || u.User == nil || u.Host == "" {
+		return repo
+	}
+	u.User = nil
+	return u.String()
 }
 
 func git(ctx context.Context, dir string, args ...string) (string, error) {

@@ -1,0 +1,43 @@
+# Open Trust assessment in Azure Pipelines. Copy the assess steps into your pipeline.
+#
+# The signing key is a Secure File (Pipelines > Library) named otrust-signing.key, holding the private
+# key from `otrust keygen`. Give buyers the matching .pub for their trust policy.
+#
+# Trust level: L1. Azure DevOps issues OIDC tokens, but Sigstore's Fulcio does not accept them, so the
+# signature proves who holds the key, not which pipeline ran. Buyers can still check the image
+# themselves with `otrust verify --recheck`.
+#
+# Not run on a real Azure DevOps organization yet: the detection (TF_BUILD, BUILD_*) is unit-tested,
+# the script itself is the one tested on Jenkins.
+
+trigger: [main]
+
+pool:
+  vmImage: ubuntu-24.04 # Microsoft-hosted Linux agents have docker and buildx
+
+variables:
+  # the generic script, pinned by commit; the otrust release it runs, pinned by digest
+  OTRUST_TEMPLATE: https://raw.githubusercontent.com/dario-mr/open-trust/<commit>/ci-templates/generic/otrust-assess.sh
+  OTRUST_VERSION: v0.1.6
+  OTRUST_SHA256: 4250b3c715f6857c13f6a0e53136408b815a86bf179f7543b3653570fd89649b # otrust-linux-amd64
+  OTRUST_SUBJECT: registry.example.com/acme/svc
+
+steps:
+  - checkout: self
+  - script: |
+      set -e
+      docker buildx create --use --driver docker-container >/dev/null
+      docker buildx build --provenance=mode=min --sbom=false --output type=oci,dest=image.oci.tar .
+    displayName: Build an OCI layout
+  - task: DownloadSecureFile@1
+    name: otrustKey
+    inputs:
+      secureFile: otrust-signing.key
+  - script: |
+      set -e
+      curl -fsSLo otrust-assess.sh "$OTRUST_TEMPLATE"
+      OTRUST_IMAGE=image.oci.tar OTRUST_KEY="$(otrustKey.secureFilePath)" OTRUST_OUT="$(Build.ArtifactStagingDirectory)/otrust-out" sh otrust-assess.sh
+    displayName: Open Trust assessment
+  - publish: $(Build.ArtifactStagingDirectory)/otrust-out
+    artifact: otrust
+    condition: always()

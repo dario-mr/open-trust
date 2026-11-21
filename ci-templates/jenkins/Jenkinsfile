@@ -1,0 +1,46 @@
+// Open Trust assessment in a Jenkins declarative pipeline. Copy the Assess stage into your Jenkinsfile.
+//
+// The signing key is a Jenkins "Secret file" credential (here with the ID otrust-signing-key) holding
+// the private key from `otrust keygen`. Give buyers the matching .pub for their trust policy.
+//
+// Trust level: L1. Jenkins has no CI identity that Sigstore accepts, so the signature proves who holds
+// the key, not which pipeline ran. Buyers can still check the image themselves with `otrust verify --recheck`.
+//
+// The agent needs docker (the scanners run in pinned containers) and curl. With a mounted docker socket
+// (docker-outside-of-docker), the workspace must be at the same path for the agent and the docker host.
+pipeline {
+    agent any
+    environment {
+        // the generic script, pinned by commit; the otrust release it runs, pinned by digest
+        OTRUST_TEMPLATE = 'https://raw.githubusercontent.com/dario-mr/open-trust/<commit>/ci-templates/generic/otrust-assess.sh'
+        OTRUST_VERSION  = 'v0.1.6'
+        OTRUST_SHA256   = '4250b3c715f6857c13f6a0e53136408b815a86bf179f7543b3653570fd89649b' // otrust-linux-amd64
+        OTRUST_SUBJECT  = 'registry.example.com/acme/svc'
+    }
+    stages {
+        stage('Build') {
+            steps {
+                // an OCI layout gives a stable digest; the docker-container builder can export one
+                sh '''
+                    docker buildx inspect otrust-oci >/dev/null 2>&1 || docker buildx create --name otrust-oci --driver docker-container >/dev/null
+                    docker buildx build --builder otrust-oci --provenance=mode=min --sbom=false --output type=oci,dest=image.oci.tar .
+                '''
+            }
+        }
+        stage('Assess') {
+            steps {
+                withCredentials([file(credentialsId: 'otrust-signing-key', variable: 'OTRUST_KEY')]) {
+                    sh '''
+                        curl -fsSLo otrust-assess.sh "$OTRUST_TEMPLATE"
+                        OTRUST_IMAGE=image.oci.tar sh otrust-assess.sh
+                    '''
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'otrust-out/**', allowEmptyArchive: true
+                }
+            }
+        }
+    }
+}
