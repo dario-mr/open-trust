@@ -1,19 +1,19 @@
 
-[1m== Setup: the released otrust v0.1.13, checked against its build provenance[0m
+[1m== Setup: the released otrust v0.1.15, checked against its build provenance[0m
 
 [1m== Setup: the vendor's artifacts (GitHub: latest run; GitLab: latest pipeline on main) and trust policies[0m
-GitHub run 45028525363
+GitHub run 45032973542
 
 [1m== 1a. Clean pass on GitHub: the isolated assessor (image pulled from ghcr.io by digest)[0m
-$ v gh/otrust-image-clean/certificate.sigstore.json --image ghcr.io/dario-mr/open-trust-demo@sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9 --trust-policy trust.yaml --evidence gh/otrust-image-clean
+$ v gh/otrust-image-clean/certificate.sigstore.json --image ghcr.io/dario-mr/open-trust-demo@sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9 --trust-policy trust.yaml --evidence gh/otrust-image-clean
   VERIFIED
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✔ Assessed 2026-11-22T13:40:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:33Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✔ Assessed 2026-11-22T14:35:00Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:35:00Z
     ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
   
@@ -25,7 +25,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image ghcr.io/dario-mr/ope
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:09Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:34:27Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -40,15 +40,15 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image ghcr.io/dario-mr/ope
 → VERIFIED, as expected
 
 [1m== 1b. The same app on GitLab: the vendor's own pipeline signs, so only ci-identity (image from the GitLab registry)[0m
-$ v gl/otrust-out/certificate.sigstore.json --image registry.gitlab.com/dario-mr/open-trust-demo@sha256:0c0d6422c109f268c76c0b60b1c72e9d3527562f46e6081f2dd10fd96b6f8263 --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
+$ v gl/otrust-out/certificate.sigstore.json --image registry.gitlab.com/dario-mr/open-trust-demo@sha256:c6757c22cc30fe8cd023081fc035776884b5c62211cbff35b083c0af3d462329 --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
   VERIFIED
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
     ✔ Signed by "open-trust-demo GitLab pipeline" from your trust policy (https://gitlab.com/dario-mr/open-trust-demo//.gitlab-ci.yml@refs/heads/main)
-    ✔ For exactly this image: sha256:0c0d6422c109f268c76c0b60b1c72e9d3527562f46e6081f2dd10fd96b6f8263
-    ✔ Built from https://gitlab.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (gitlab)
-    ✔ Assessed 2026-11-22T13:42:42Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:42:42Z
+    ✔ For exactly this image: sha256:c6757c22cc30fe8cd023081fc035776884b5c62211cbff35b083c0af3d462329
+    ✔ Built from https://gitlab.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (gitlab)
+    ✔ Assessed 2026-11-22T14:32:44Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:32:44Z
     ✔ Trust level L1+ci-identity: the vendor's own CI pipeline, for this project and commit, ran and signed the assessment
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
   
@@ -61,7 +61,7 @@ $ v gl/otrust-out/certificate.sigstore.json --image registry.gitlab.com/dario-mr
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:42:08Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:32:09Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -83,10 +83,10 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✔ Assessed 2026-11-22T13:40:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:33Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✔ Assessed 2026-11-22T14:35:00Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:35:00Z
     ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
     ✔ Your own scan of the image agrees with the certificate, and its packages match the vendor's SBOM
@@ -99,7 +99,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:09Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:34:27Z)
   
   Your re-check today: PASSED (your vulnerability DB 2026-11-22T07:05:02.616712326Z, the vendor's 2026-11-22T12:38:44.47270345Z)
     ✔ Nothing new, nothing missing
@@ -116,15 +116,15 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
 → VERIFIED, as expected
 
 [1m== 1e. No certificate file: verify by image reference alone (the certificate is attached to the ghcr.io image)[0m
-$ v --image ghcr.io/dario-mr/open-trust-demo@sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9 --trust-policy trust.yaml
+$ v --image ghcr.io/dario-mr/open-trust-demo@sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9 --trust-policy trust.yaml
   VERIFIED
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✔ Assessed 2026-11-22T13:40:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:33Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✔ Assessed 2026-11-22T14:35:00Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:35:00Z
     ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
   
   Checks, as the vendor's assessment reports them
@@ -135,7 +135,7 @@ $ v --image ghcr.io/dario-mr/open-trust-demo@sha256:5f8c1132907a8d9bbe87e891985a
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:09Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:34:27Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -145,21 +145,21 @@ $ v --image ghcr.io/dario-mr/open-trust-demo@sha256:5f8c1132907a8d9bbe87e891985a
   
   Notes
     ℹ no revocation list given: revocation not checked (use --online)
-    ℹ certificate found attached to the image: sha256:741a1de34094725a47fa19d780c28fddfab48a5bd8cf81abacf0b903db1c60e2, created 2026-11-22T13:41:10Z (newest of 1)
+    ℹ certificate found attached to the image: sha256:0918a27821b52b1cb6280ef092c1fca9cac2b901b59fdaa1813bcec3187bf256, created 2026-11-22T14:35:14Z (newest of 1)
   
   VERIFIED
 → VERIFIED, as expected
 
 [1m== 1f. The same on GitLab's registry[0m
-$ v --image registry.gitlab.com/dario-mr/open-trust-demo@sha256:0c0d6422c109f268c76c0b60b1c72e9d3527562f46e6081f2dd10fd96b6f8263 --trust-policy trust-gitlab.yaml
+$ v --image registry.gitlab.com/dario-mr/open-trust-demo@sha256:c6757c22cc30fe8cd023081fc035776884b5c62211cbff35b083c0af3d462329 --trust-policy trust-gitlab.yaml
   VERIFIED
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
     ✔ Signed by "open-trust-demo GitLab pipeline" from your trust policy (https://gitlab.com/dario-mr/open-trust-demo//.gitlab-ci.yml@refs/heads/main)
-    ✔ For exactly this image: sha256:0c0d6422c109f268c76c0b60b1c72e9d3527562f46e6081f2dd10fd96b6f8263
-    ✔ Built from https://gitlab.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (gitlab)
-    ✔ Assessed 2026-11-22T13:42:42Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:42:42Z
+    ✔ For exactly this image: sha256:c6757c22cc30fe8cd023081fc035776884b5c62211cbff35b083c0af3d462329
+    ✔ Built from https://gitlab.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (gitlab)
+    ✔ Assessed 2026-11-22T14:32:44Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:32:44Z
     ✔ Trust level L1+ci-identity: the vendor's own CI pipeline, for this project and commit, ran and signed the assessment
   
   Checks, as the vendor's assessment reports them
@@ -171,7 +171,7 @@ $ v --image registry.gitlab.com/dario-mr/open-trust-demo@sha256:0c0d6422c109f268
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:42:08Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:32:09Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -183,7 +183,7 @@ $ v --image registry.gitlab.com/dario-mr/open-trust-demo@sha256:0c0d6422c109f268
   
   Notes
     ℹ no revocation list given: revocation not checked (use --online)
-    ℹ certificate found attached to the image: sha256:07f7b6def93b4e0f5891b6091332b3e1a3e94ea2525138b7195200d919649d31, created 2026-11-22T13:42:43Z (newest of 1)
+    ℹ certificate found attached to the image: sha256:378ca32fd2e6040f8886dcb0093b236b2c7e264a4fc41e0f2ead7f6b7ee545db, created 2026-11-22T14:32:44Z (newest of 1)
   
   VERIFIED
 → VERIFIED, as expected
@@ -195,9 +195,9 @@ $ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --tru
   
   What this proves
     ✔ Signed by "open-trust-demo GitLab pipeline" from your trust policy (https://gitlab.com/dario-mr/open-trust-demo//.gitlab-ci.yml@refs/heads/main)
-    ✔ For exactly this image: sha256:0c0d6422c109f268c76c0b60b1c72e9d3527562f46e6081f2dd10fd96b6f8263
-    ✔ Built from https://gitlab.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (gitlab)
-    ✘ Assessed 2026-11-22T13:42:42Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:42:42Z
+    ✔ For exactly this image: sha256:c6757c22cc30fe8cd023081fc035776884b5c62211cbff35b083c0af3d462329
+    ✔ Built from https://gitlab.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (gitlab)
+    ✘ Assessed 2026-11-22T14:32:44Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:32:44Z
     ✘ Trust level L1+ci-identity: the vendor's own CI pipeline, for this project and commit, ran and signed the assessment
   
   Checks, as the vendor's assessment reports them
@@ -209,7 +209,7 @@ $ v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --tru
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:42:08Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:32:09Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -228,10 +228,10 @@ $ v gh/otrust-image-vulnerable/certificate.sigstore.json --image gh/image-vulner
   The certificate is genuine, but the image failed the assessment. Review the failed checks before you deploy it.
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✔ For exactly this image: sha256:5644a145f912b3b00e40fa97838b999335c06269b41c20c4fb166c1923c40167
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✔ Assessed 2026-11-22T13:40:44Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:44Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✔ For exactly this image: sha256:3c44dc3ecfa07e5da25c13c93cc3ccde824bfbfabc228c8fe4cc126453126e6a
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✔ Assessed 2026-11-22T14:30:41Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:30:41Z
     ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
   
   Checks, as the vendor's assessment reports them
@@ -245,7 +245,7 @@ $ v gh/otrust-image-vulnerable/certificate.sigstore.json --image gh/image-vulner
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:21Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:30:06Z)
   
   Risks the vendor accepted
     ✘ Unmet vulns: CRITICAL CVE-2021-44228 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.15.0, 2.3.1, 2.12.2)
@@ -270,10 +270,10 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-vulnerable/
   This certificate is for a different image than the one you have.
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✘ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✘ Assessed 2026-11-22T13:40:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:33Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✘ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✘ Assessed 2026-11-22T14:35:00Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:35:00Z
     ✘ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
   
   Checks, as the vendor's assessment reports them
@@ -284,7 +284,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-vulnerable/
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:09Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:34:27Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -292,7 +292,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-vulnerable/
     - Vendor-attested (Level 1): the vendor controls the environment the assessment ran in
     - That the image's packages and vulnerabilities are as the vendor reports: run with --recheck to scan it yourself
   
-  ARTIFACT_MISMATCH: image is sha256:5644a145f912b3b00e40fa97838b999335c06269b41c20c4fb166c1923c40167, certificate is for sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
+  ARTIFACT_MISMATCH: image is sha256:3c44dc3ecfa07e5da25c13c93cc3ccde824bfbfabc228c8fe4cc126453126e6a, certificate is for sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
 → ARTIFACT_MISMATCH, as expected
 
 [1m== 4. An edited certificate: FAILED rewritten to PASSED[0m
@@ -300,7 +300,7 @@ $ v edited.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-polic
   INVALID_SIGNATURE
   The certificate was altered or is not properly signed. Do not rely on it.
   
-  INVALID_SIGNATURE: failed to verify log inclusion: transparency log dsse/intoto entry payload hash f5d62c68a4e0f2ac9c132f17850cabf5f2d40d76f76ab7a0696c12afcdb6d252 does not match envelope payload hash 6bda41705b67efba303a90b97ce0188fcfe64012b2058bfa6a6b8546fe463e83
+  INVALID_SIGNATURE: failed to verify log inclusion: transparency log dsse/intoto entry payload hash 8cdde2378ce3ad5b4aaad1de1542077ce3229d734ab5b6f235b79ee278e811b8 does not match envelope payload hash c298d0b23142c95b69fc1a749428ef42121660c8eee5a434b4325da85358c58f
 → INVALID_SIGNATURE, as expected
 
 [1m== 5a. Revoked by the buyer's own list[0m
@@ -309,10 +309,10 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
   The certificate, the assessor or the signer was revoked. Do not deploy.
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✘ Assessed 2026-11-22T13:40:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:33Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✘ Assessed 2026-11-22T14:35:00Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:35:00Z
     ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
   
   Checks, as the vendor's assessment reports them
@@ -323,7 +323,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:09Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:34:27Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -334,7 +334,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
   Notes
     ℹ revocations checked against your list my-revocations.json (1 entries)
   
-  REVOKED: artifact sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9 revoked: recalled by our security team
+  REVOKED: artifact sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9 revoked: recalled by our security team
 → REVOKED, as expected
 
 [1m== 5b. Revoked by the signed Open Trust list (--online): a pre-release assessor binary[0m
@@ -375,10 +375,10 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✔ Assessed 2026-11-22T13:40:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:33Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✔ Assessed 2026-11-22T14:35:00Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:35:00Z
     ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
   
   Checks, as the vendor's assessment reports them
@@ -389,7 +389,7 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:09Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:34:27Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -404,8 +404,8 @@ $ v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image
 → VERIFIED, as expected
 
 [1m== 6. A key-signed run from a CI with no OIDC identity (a 'Jenkins' job), assessing the same image[0m
-  Subject   sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-  Source    https://github.com/dario-mr/open-trust-demo.git @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (generic)
+  Subject   sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+  Source    https://github.com/dario-mr/open-trust-demo.git @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (generic)
   Profile   supply-chain-baseline 1.1.0
   
   ✔ sbom             PASSED
@@ -428,10 +428,10 @@ $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar -
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key udEBdDN1SkaAZUqoKBo1gIMBljN0oHz9eRoi5EfHvf8=)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (generic)
-    ✔ Assessed 2026-11-22T13:46:07Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:46:07Z
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key 2mrALpE/as073i7qT4bglaemGzjlgnfedxATk9p4gQw=)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (generic)
+    ✔ Assessed 2026-11-22T14:38:08Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:38:08Z
     ✔ Trust level L1: whoever holds the vendor's key signed it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
   
@@ -444,7 +444,7 @@ $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar -
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:45:56Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:37:57Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -466,10 +466,10 @@ $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar -
   The certificate is genuine, but it proves less than your trust policy requires.
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key udEBdDN1SkaAZUqoKBo1gIMBljN0oHz9eRoi5EfHvf8=)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (generic)
-    ✘ Assessed 2026-11-22T13:46:07Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:46:07Z
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key 2mrALpE/as073i7qT4bglaemGzjlgnfedxATk9p4gQw=)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (generic)
+    ✘ Assessed 2026-11-22T14:38:08Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:38:08Z
     ✘ Trust level L1: whoever holds the vendor's key signed it
   
   Checks, as the vendor's assessment reports them
@@ -481,7 +481,7 @@ $ v jenkins-out/certificate.sigstore.json --image gh/image-clean/image.oci.tar -
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:45:56Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:37:57Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -500,10 +500,10 @@ $ v lie.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy t
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key udEBdDN1SkaAZUqoKBo1gIMBljN0oHz9eRoi5EfHvf8=)
-    ✔ For exactly this image: sha256:5644a145f912b3b00e40fa97838b999335c06269b41c20c4fb166c1923c40167
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (generic)
-    ✔ Assessed 2026-11-22T13:46:07Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:46:07Z
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key 2mrALpE/as073i7qT4bglaemGzjlgnfedxATk9p4gQw=)
+    ✔ For exactly this image: sha256:3c44dc3ecfa07e5da25c13c93cc3ccde824bfbfabc228c8fe4cc126453126e6a
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (generic)
+    ✔ Assessed 2026-11-22T14:38:08Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:38:08Z
     ✔ Trust level L1: whoever holds the vendor's key signed it
   
   Checks, as the vendor's assessment reports them
@@ -515,7 +515,7 @@ $ v lie.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy t
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:45:56Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:37:57Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
@@ -537,10 +537,10 @@ $ v lie.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy t
   Your own scan of the image contradicts the certificate: the vendor's results are not reliable for this image.
   
   What this proves
-    ✔ Signed by "Acme Jenkins key" from your trust policy (key udEBdDN1SkaAZUqoKBo1gIMBljN0oHz9eRoi5EfHvf8=)
-    ✔ For exactly this image: sha256:5644a145f912b3b00e40fa97838b999335c06269b41c20c4fb166c1923c40167
-    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (generic)
-    ✔ Assessed 2026-11-22T13:46:07Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:46:07Z
+    ✔ Signed by "Acme Jenkins key" from your trust policy (key 2mrALpE/as073i7qT4bglaemGzjlgnfedxATk9p4gQw=)
+    ✔ For exactly this image: sha256:3c44dc3ecfa07e5da25c13c93cc3ccde824bfbfabc228c8fe4cc126453126e6a
+    ✔ Built from https://github.com/dario-mr/open-trust-demo.git @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (generic)
+    ✔ Assessed 2026-11-22T14:38:08Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:38:08Z
     ✔ Trust level L1: whoever holds the vendor's key signed it
     ✘ Your own scan of the image contradicts the certificate
   
@@ -553,7 +553,7 @@ $ v lie.sigstore.json --image gh/image-vulnerable/image.oci.tar --trust-policy t
     ⚠ provenance       WARN
         - provenance is not signed
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:45:56Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:37:57Z)
   
   Your re-check today: FAILED (your vulnerability DB 2026-11-22T07:05:02.616712326Z, the vendor's 2026-11-22T07:05:02.616712326Z)
     ✘ Unreported, though public before the vendor's scan: CRITICAL CVE-2021-44228 in org.apache.logging.log4j:log4j-core@2.14.1 (fixed in: 2.15.0, 2.3.1, 2.12.2), published 2021-12-10
@@ -580,10 +580,10 @@ $ docker run --rm --network none -v /Users/dmauri/.cache/otrust-demo:/w:ro -w /w
   You can rely on this certificate, within the limits listed under "What this does not prove".
   
   What this proves
-    ✔ Signed by "Open Trust assessor (557b7aee061b502da158271776e3bb40158d66c9) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@557b7aee061b502da158271776e3bb40158d66c9)
-    ✔ For exactly this image: sha256:5f8c1132907a8d9bbe87e891985a2652ae420abd00fdabc43bb361bb3db923b9
-    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 6914f2bfdba79ddf1ce08b07e09a1b150e9c996b (github)
-    ✔ Assessed 2026-11-22T13:40:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T13:40:33Z
+    ✔ Signed by "Open Trust assessor (9f16fa97b460b3e68cb18adabff57955d172d8f5) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@9f16fa97b460b3e68cb18adabff57955d172d8f5)
+    ✔ For exactly this image: sha256:d6eae497a59af3edf5c3f0ab57e1d8b5b9815c47ce4049d885a2a2cd1c0e46c9
+    ✔ Built from https://github.com/dario-mr/open-trust-demo @ 7c46b9a90fcff22ac4c810ab150133a690eef12f (github)
+    ✔ Assessed 2026-11-22T14:35:00Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-22T14:35:00Z
     ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
     ✔ The vendor's evidence matches its digests and re-evaluates to the same results
   
@@ -595,7 +595,7 @@ $ docker run --rm --network none -v /Users/dmauri/.cache/otrust-demo:/w:ro -w /w
         - semgrep reported 6 scan error(s)
     ✔ provenance       PASSED
     ✔ subject_binding  PASSED
-    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T13:40:09Z)
+    ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T14:34:27Z)
   
   What this does not prove
     - Scanners detect known vulnerabilities and pattern-matched code flaws only
