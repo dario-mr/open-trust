@@ -114,7 +114,7 @@ func buildReport(r *verify.Report) []section {
 
 	risks := section{title: "Risks the vendor accepted"}
 	for _, x := range e.Exceptions {
-		add(&risks, "⚠", fmt.Sprintf("Exception %s %s (expires %s): %s", x.Check, x.ID, x.Expires, x.Reason))
+		add(&risks, "⚠", fmt.Sprintf("Exception %s %s%s (expires %s): %s", x.Check, x.ID, inFile(x.Path), x.Expires, x.Reason))
 	}
 	for _, u := range e.UnmetRequirements {
 		add(&risks, "✘", "Unmet "+u)
@@ -190,6 +190,13 @@ func severityCounts(findings []string) string {
 		return ""
 	}
 	return " (" + strings.Join(parts, ", ") + ")"
+}
+
+func inFile(path string) string {
+	if path == "" {
+		return ""
+	}
+	return " in " + path
 }
 
 func headline(r *verify.Report) string {

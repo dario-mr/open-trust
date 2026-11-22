@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
-
-	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
 
 func fixture(t *testing.T, name string) *Input {
@@ -34,13 +32,8 @@ func TestEvaluateFixtures(t *testing.T) {
 	if d.Result != "PASSED" || len(d.UnmetRequirements) != 0 {
 		t.Errorf("clean: %s %v", d.Result, d.UnmetRequirements)
 	}
-	if d.Profile.ID != "supply-chain-baseline" || d.Profile.Version != "1.1.0" {
+	if d.Profile.ID != "supply-chain-baseline" || d.Profile.Version != "1.2.0" {
 		t.Errorf("profile = %+v", d.Profile)
-	}
-	// the frozen 1.0.0 policy is still evaluable, for certificates issued under it
-	old, err := EvaluateWith(context.Background(), scb.PolicyByDigest("7452bdf886c9f905176e6de9ab20b119ae419e56f327f3b1797d0f86c8c27ed1"), fixture(t, "clean"))
-	if err != nil || old.Profile.Version != "1.0.0" || old.Result != "PASSED" {
-		t.Errorf("policy 1.0.0: %+v, %v", old, err)
 	}
 
 	d, err = Evaluate(ctx, fixture(t, "vulnerable"))

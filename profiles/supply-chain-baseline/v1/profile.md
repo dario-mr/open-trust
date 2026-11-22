@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Profile ID | `supply-chain-baseline` |
-| Version | `1.1.0` (draft). `1.0.0` is kept byte for byte as [`policy-1.0.0.rego`](policy-1.0.0.rego): certificates name their policy by digest, and `otrust verify` accepts and re-evaluates both. 1.1.0 adds the SAST coverage warning (§5). |
+| Version | `1.2.0` (draft). `otrust verify` knows only the current policy: a certificate issued under an earlier version gives `POLICY_UNKNOWN` (the project has no users yet, so it keeps no compatibility). 1.1.0 added the SAST coverage warning (§5), 1.2.0 per-file SAST exceptions (§6). |
 | VSA level | `OPENTRUST_SCB_V1` |
 | Policy | [`policy.rego`](policy.rego), package `otrust.scb.v1`, result at `data.otrust.scb.v1.decision`. The certificate records its SHA-256. |
 | Conformance | [`fixtures/`](fixtures/), with expected results in [fixtures/README.md](fixtures/README.md). Run with `./test.sh`. |
@@ -97,6 +97,7 @@ MEDIUM, LOW and UNKNOWN vulnerabilities, and Semgrep INFO findings, are ignored 
 An exception applies only when **all** of these hold:
 - `check` names an exceptable check;
 - `id` equals the finding key (table below);
+- `path` equals the finding's file, for SAST findings (relative to the source root; `/src/` and `src/` prefixes are ignored). A SAST exception without `path` covers only findings without a file, such as `no-rules:<language>`, so accepting a rule in one file never silences it in another;
 - `reason` is non-blank;
 - `expires` is later than `now`.
 
@@ -104,7 +105,7 @@ An exception applies only when **all** of these hold:
 |---|---|---|
 | `vulns` | vulnerability ID | `CVE-2021-44228` |
 | `secrets` | `<target>#<rule id>` | `config/deploy.pem#private-key` |
-| `sast` | Semgrep `check_id` (covers every location in v1) | `java.lang.security.audit.formatted-sql-string.formatted-sql-string` |
+| `sast` | Semgrep `check_id`, plus `path` | `java.lang.security.audit.formatted-sql-string.formatted-sql-string` with `path: app/Main.java` |
 
 Applied exceptions are listed in `exceptions_applied`. Invalid, expired or non-exceptable ones are listed in `exceptions_ignored`. Both go into the certificate.
 
@@ -123,7 +124,7 @@ This profile's rules are identical at every level. Only how far a buyer can trus
 ## 8. Validity and versioning
 
 - A certificate is valid for **30 days** from `timeVerified`. Vulnerability data ages, so re-assess at least monthly.
-- A new profile version **never** changes an old certificate's result. `otrust` embeds every released policy version and verifies (and with `--evidence` re-evaluates) a certificate under the version it names by digest. Verifiers may require a minimum profile version.
+- A new profile version **never** changes an old certificate's result: the certificate names its policy by digest. During this greenfield phase the verifier knows only the current policy, so an older certificate gives `POLICY_UNKNOWN`: re-assess.
 - Patch version: wording or bug fixes that don't change any decision on the conformance fixtures. Minor version: new WARN conditions. Major version: any new FAIL condition, check or tool change.
 
 ## 9. Known gaps (v1 draft)

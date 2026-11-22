@@ -19,11 +19,10 @@ import (
 // Context is the policy input minus scanner evidence. It is written to context.json and bound
 // to the statement by digest, so a verifier can rebuild the exact Input from it plus the evidence files.
 type Context struct {
-	Now        string      `json:"now"`
-	Subject    SubjectIn   `json:"subject"`
-	Provenance Provenance  `json:"provenance"`
-	Exceptions []Exception `json:"exceptions"`
-	// SASTCoverage is absent from profile 1.0.0 contexts; omitempty keeps their digests unchanged.
+	Now          string             `json:"now"`
+	Subject      SubjectIn          `json:"subject"`
+	Provenance   Provenance         `json:"provenance"`
+	Exceptions   []Exception        `json:"exceptions"`
 	SASTCoverage []LanguageCoverage `json:"sast_coverage,omitempty"`
 }
 
@@ -74,8 +73,11 @@ type EvidenceIn struct {
 }
 
 type Exception struct {
-	Check   string `json:"check" yaml:"check"`
-	ID      string `json:"id" yaml:"id"`
+	Check string `json:"check" yaml:"check"`
+	ID    string `json:"id" yaml:"id"`
+	// Path is the file a SAST finding is in, relative to the source root: the exception covers the
+	// rule in that file only. SAST findings without a file (no-rules:<language>) take none.
+	Path    string `json:"path,omitempty" yaml:"path"`
 	Reason  string `json:"reason" yaml:"reason"`
 	Expires string `json:"expires" yaml:"expires"`
 }
@@ -121,13 +123,8 @@ func LoadExceptions(path string) ([]Exception, error) {
 
 func NowRFC3339() string { return time.Now().UTC().Format(time.RFC3339) }
 
-// Evaluate runs the current embedded policy over the input exactly as the verifier will.
+// Evaluate runs the embedded policy over the input exactly as the verifier will.
 func Evaluate(ctx context.Context, in *Input) (*Decision, error) {
-	return EvaluateWith(ctx, scb.Policy, in)
-}
-
-// EvaluateWith runs a given version of the profile's policy (scb.PolicyByDigest).
-func EvaluateWith(ctx context.Context, policy []byte, in *Input) (*Decision, error) {
 	raw, err := json.Marshal(in)
 	if err != nil {
 		return nil, err
@@ -140,7 +137,7 @@ func EvaluateWith(ctx context.Context, policy []byte, in *Input) (*Decision, err
 	}
 	rs, err := rego.New(
 		rego.Query(scb.Query),
-		rego.Module("policy.rego", string(policy)),
+		rego.Module("policy.rego", string(scb.Policy)),
 		rego.Input(doc),
 		rego.StrictBuiltinErrors(true),
 	).Eval(ctx)

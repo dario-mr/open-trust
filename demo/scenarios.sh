@@ -10,9 +10,6 @@ set -uo pipefail
 repo=$(cd "$(dirname "$0")/.." && pwd)
 VERSION=${VERSION:-v0.1.15}
 DEMO=dario-mr/open-trust-demo
-# the last run of the pre-release assessor (df86e37), whose otrust binary is revoked in trust/revocations.json
-OLD_RUN=${OLD_RUN:-43610582278}
-OLD_ASSESSOR=df86e37bb89823adc03dd6422d56d33ce4583416
 work=${WORK:-$HOME/.cache/otrust-demo}
 rm -rf "$work" && mkdir -p "$work" && cd "$work" || exit 2
 root=$repo/internal/verify/testdata/public-good-trusted-root.json
@@ -43,13 +40,10 @@ otrust=$work/otrust-$os-$arch
 say "Setup: the vendor's artifacts (GitHub: latest run; GitLab: latest pipeline on main) and trust policies"
 run=$(gh run list -R $DEMO -w "build and assess" -s success -L 1 --json databaseId -q '.[0].databaseId')
 echo "GitHub run $run"
-mkdir -p gh gl old
+mkdir -p gh gl
 gh run download "$run" -R $DEMO -D gh -n image-clean -n otrust-image-clean -n image-vulnerable -n otrust-image-vulnerable || exit 2
-gh run download "$OLD_RUN" -R $DEMO -D old -n image-clean -n otrust-image-clean || exit 2
 (cd gl && glab job artifact main assess-clean -R $DEMO >/dev/null && glab job artifact main "build: [clean]" -R $DEMO >/dev/null) || exit 2
 for f in trust.yaml trust-gitlab.yaml; do gh api "repos/$DEMO/contents/$f" -q .content | base64 -d > "$f"; done
-gh api "repos/$DEMO/contents/trust.yaml?ref=$(gh run view "$OLD_RUN" -R $DEMO --json headSha -q .headSha)" -q .content | base64 -d > old/trust.yaml
-grep -q "$OLD_ASSESSOR" old/trust.yaml || { echo "old trust policy does not pin $OLD_ASSESSOR"; exit 2; }
 v() { "$otrust" verify "$@" --trusted-root "$root"; }
 
 # a buyer pulls the image they deploy from the vendor's registry, pinned by digest
@@ -82,9 +76,7 @@ scenario "4. An edited certificate: FAILED rewritten to PASSED" INVALID_SIGNATUR
 echo "{\"revoked\":[{\"subject\":\"$(jq -r '.dsseEnvelope.payload|@base64d|fromjson|.subject[0].digest.sha256' gh/otrust-image-clean/certificate.sigstore.json | sed 's/^/sha256:/')\",\"reason\":\"recalled by our security team\"}]}" > my-revocations.json
 scenario "5a. Revoked by the buyer's own list" REVOKED \
 	v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --revocations my-revocations.json
-scenario "5b. Revoked by the signed Open Trust list (--online): a pre-release assessor binary" REVOKED \
-	v old/otrust-image-clean/certificate.sigstore.json --image old/image-clean/image.oci.tar --trust-policy old/trust.yaml --online
-scenario "5c. The current certificate passes the same online check" VERIFIED \
+scenario "5b. The signed Open Trust revocation list (--online) is checked, and the current certificate passes" VERIFIED \
 	v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --online
 
 say "6. A key-signed run from a CI with no OIDC identity (a 'Jenkins' job), assessing the same image"

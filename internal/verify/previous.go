@@ -3,6 +3,7 @@ package verify
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/sigstore/sigstore-go/pkg/root"
 )
@@ -66,10 +67,10 @@ func diff(prev, cur *Report) *Changes {
 	}
 	var oldEx, newEx []string
 	for _, e := range a.Ext.Exceptions {
-		oldEx = append(oldEx, e.Check+" "+e.ID)
+		oldEx = append(oldEx, strings.TrimSpace(e.Check+" "+e.ID+" "+e.Path))
 	}
 	for _, e := range b.Ext.Exceptions {
-		k := e.Check + " " + e.ID
+		k := strings.TrimSpace(e.Check + " " + e.ID + " " + e.Path)
 		newEx = append(newEx, k)
 		if !slices.Contains(oldEx, k) {
 			add("New exception: %s (expires %s): %s", k, e.Expires, e.Reason)

@@ -261,7 +261,7 @@ func printSummary(w io.Writer, r *assess.Result) {
 	if n := len(d.ExceptionsApplied); n > 0 {
 		fmt.Fprintf(w, "\nExceptions applied: %d\n", n)
 		for _, e := range d.ExceptionsApplied {
-			fmt.Fprintf(w, "    - %s %s (expires %s): %s\n", e.Check, e.ID, e.Expires, e.Reason)
+			fmt.Fprintf(w, "    - %s %s%s (expires %s): %s\n", e.Check, e.ID, inFile(e.Path), e.Expires, e.Reason)
 		}
 	}
 	if n := len(d.ExceptionsIgnored); n > 0 {

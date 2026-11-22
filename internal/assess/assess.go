@@ -168,7 +168,6 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	if err := os.WriteFile(filepath.Join(out, statement.ContextFile), ctxJSON, 0o644); err != nil {
 		return nil, err
 	}
-	os.Remove(filepath.Join(out, "input.json")) // pre-week-3 layout
 	dec, err := policy.Evaluate(ctx, pctx.Input(policy.EvidenceIn{SBOM: ev.SBOM, Vulns: ev.Vulns, Secrets: ev.Secrets, SAST: ev.SAST}))
 	if err != nil {
 		return nil, err

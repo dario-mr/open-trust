@@ -5,8 +5,8 @@ package otrust.scb.v1
 
 import rego.v1
 
-# 1.1.0: SAST warns about languages the ruleset has no rules for. 1.0.0 is kept as policy-1.0.0.rego.
-profile := {"id": "supply-chain-baseline", "version": "1.1.0"}
+# 1.2.0: SAST exceptions name the file their finding is in.
+profile := {"id": "supply-chain-baseline", "version": "1.2.0"}
 
 required_checks := ["sbom", "vulns", "secrets", "sast", "provenance", "subject_binding"]
 
@@ -81,10 +81,14 @@ findings.sast contains f if {
 	level := sast_level[res.extra.severity]
 	f := {
 		"key": res.check_id,
+		"path": source_path(res.path),
 		"level": level,
 		"message": sprintf("%s %s at %s:%d", [res.extra.severity, res.check_id, res.path, res.start.line]),
 	}
 }
+
+# semgrep reports /src/… in docker and src/… with --scanners local; exceptions use the path in the source tree
+source_path(p) := regex.replace(p, "^/?src/", "")
 
 sast_level := {"ERROR": "fail", "WARNING": "warn"}
 
@@ -143,11 +147,14 @@ exception_valid(e) if {
 	time.parse_rfc3339_ns(e.expires) > time.parse_rfc3339_ns(input.now)
 }
 
+# A finding in a file is excepted only by an exception naming that file: accepting a rule for one
+# file never silences it elsewhere. Findings without a file (no-rules:<language>) take none.
 excepted(check, f) if {
 	not f.structural
 	some e in object.get(input, "exceptions", [])
 	e.check == check
 	e.id == f.key
+	object.get(e, "path", "") == object.get(f, "path", "")
 	exception_valid(e)
 }
 
@@ -192,12 +199,13 @@ decision := {
 		some f in effective(c)
 		f.level == "fail"
 	]),
-	"exceptions_applied": [e |
+	"exceptions_applied": {e |
 		some e in object.get(input, "exceptions", [])
 		some f in object.get(findings, e.check, set())
 		excepted(e.check, f)
 		e.id == f.key
-	],
+		object.get(e, "path", "") == object.get(f, "path", "")
+	},
 	"exceptions_ignored": [{"exception": e, "reason": "invalid, expired, or not exceptable"} |
 		some e in object.get(input, "exceptions", [])
 		not exception_valid(e)

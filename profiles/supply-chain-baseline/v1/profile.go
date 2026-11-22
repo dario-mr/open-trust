@@ -12,12 +12,6 @@ import (
 //go:embed policy.rego
 var Policy []byte
 
-// policy100 is profile 1.0.0's policy, frozen byte for byte: certificates name their policy by
-// digest, so the verifier keeps every released version to verify and re-evaluate older certificates.
-//
-//go:embed policy-1.0.0.rego
-var policy100 []byte
-
 //go:embed tools.json
 var toolsJSON []byte
 
@@ -54,19 +48,7 @@ func LoadTools() (Tools, error) {
 	return t, err
 }
 
-func PolicyDigest() string { return digest(Policy) }
-
-// PolicyByDigest returns the policy with this sha256 (hex), current or released earlier, or nil.
-func PolicyByDigest(d string) []byte {
-	for _, p := range [][]byte{Policy, policy100} {
-		if digest(p) == d {
-			return p
-		}
-	}
-	return nil
-}
-
-func digest(b []byte) string {
-	sum := sha256.Sum256(b)
+func PolicyDigest() string {
+	sum := sha256.Sum256(Policy)
 	return hex.EncodeToString(sum[:])
 }

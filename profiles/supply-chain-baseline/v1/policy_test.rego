@@ -5,6 +5,7 @@ package otrust.scb.v1_test
 import rego.v1
 
 import data.otrust.scb.v1 as scb
+import data.otrust.scb.v1.source_path
 
 clean := data.clean
 vuln := data.vulnerable
@@ -119,7 +120,7 @@ test_excepting_every_failure_passes if {
 		{"check": "vulns", "id": "CVE-2021-45046", "reason": "r", "expires": future},
 		{"check": "vulns", "id": "CVE-2021-45105", "reason": "r", "expires": future},
 		{"check": "secrets", "id": "config/deploy.pem#private-key", "reason": "test key", "expires": future},
-		{"check": "sast", "id": "java.lang.security.audit.formatted-sql-string.formatted-sql-string", "reason": "r", "expires": future},
+		{"check": "sast", "id": sqli, "path": sqli_file, "reason": "r", "expires": future},
 	]
 	d := decide(with_exceptions(vuln, es))
 	d.result == "PASSED"
@@ -138,7 +139,7 @@ test_exception_without_reason_is_ignored if {
 	e := {"check": "vulns", "id": "CVE-2021-44228", "reason": " ", "expires": future}
 	d := decide(with_exceptions(vuln, [e]))
 	count(d.exceptions_ignored) == 1
-	d.exceptions_applied == []
+	count(d.exceptions_applied) == 0
 }
 
 test_structural_requirements_cannot_be_excepted if {
@@ -187,4 +188,38 @@ test_uncovered_language_can_be_excepted if {
 		"exceptions": [{"check": "sast", "id": "no-rules:cpp", "reason": "vendored third-party C++, reviewed separately", "expires": future}],
 	})
 	check_result(decide(inp), "sast") == "PASSED"
+}
+
+# ---- 1.2.0: SAST exceptions are per file
+
+sqli := "java.lang.security.audit.formatted-sql-string.formatted-sql-string"
+
+sqli_file := "/fx/src/vulnerable/app/Main.java"
+
+test_sast_exception_without_path_does_not_cover_a_file if {
+	e := {"check": "sast", "id": sqli, "reason": "r", "expires": future}
+	d := decide(with_exceptions(vuln, [e]))
+	check_result(d, "sast") == "FAILED"
+	count(d.exceptions_applied) == 0
+}
+
+test_sast_exception_for_another_file_does_not_apply if {
+	e := {"check": "sast", "id": sqli, "path": "src/other/Main.java", "reason": "r", "expires": future}
+	check_result(decide(with_exceptions(vuln, [e])), "sast") == "FAILED"
+}
+
+test_sast_exception_for_the_file_applies_once if {
+	two := object.union(vuln, {"evidence": object.union(vuln.evidence, {"sast": object.union(vuln.evidence.sast, {"results": [
+		vuln.evidence.sast.results[0],
+		object.union(vuln.evidence.sast.results[0], {"start": {"line": 99}}),
+	]})})})
+	e := {"check": "sast", "id": sqli, "path": sqli_file, "reason": "fixture", "expires": future}
+	d := decide(with_exceptions(two, [e]))
+	check_result(d, "sast") != "FAILED"
+	d.exceptions_applied == {e}
+}
+
+test_docker_and_local_paths_are_the_same_file if {
+	source_path("/src/internal/a.go") == "internal/a.go"
+	source_path("src/internal/a.go") == "internal/a.go"
 }

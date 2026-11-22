@@ -25,9 +25,6 @@ import (
 // known artifact types. Other tools attach bundles too, so FindCertificates also reads each one.
 const CertificateArtifactType = "application/vnd.dev.sigstore.bundle.v0.3+json"
 
-// legacyArtifactType is what v0.1.12 attached; still found.
-const legacyArtifactType = "application/vnd.dev.open-trust.certificate.v1+json"
-
 const bundleMediaType = CertificateArtifactType
 
 // Attached is a certificate found on a registry image.
@@ -112,7 +109,7 @@ func FindCertificates(ctx context.Context, ref string) ([]Attached, error) {
 			return nil, err
 		}
 		for _, c := range m.Manifests {
-			if c.ArtifactType != CertificateArtifactType && c.ArtifactType != legacyArtifactType {
+			if c.ArtifactType != CertificateArtifactType {
 				continue
 			}
 			img, err := remote.Image(d.Context().Digest(c.Digest.String()), opts...)
