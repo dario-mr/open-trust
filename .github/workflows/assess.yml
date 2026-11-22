@@ -22,7 +22,7 @@
 #       steps:
 #         - uses: actions/download-artifact@<sha>
 #           with: { name: otrust-<suffix> }
-#         - run: |   # otrust v0.1.12+, checked against its pinned sha256
+#         - run: |   # otrust v0.1.13+, checked against its pinned sha256
 #             docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin <<<"${{ github.token }}"
 #             otrust attach certificate.sigstore.json --image "ghcr.io/acme/svc@sha256:…"
 name: otrust assess
