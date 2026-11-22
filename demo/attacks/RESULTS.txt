@@ -1,28 +1,35 @@
-runs: attacks 44956558543, self-hosted 44956774105
+
+[1m== Vendor: attacks on GitHub-hosted runners[0m
+
+[1m== Vendor: attach a self-hosted runner labelled ubuntu-24.04 (the isolated assessor's runs-on)[0m
+runs: attacks 45038632120, self-hosted 45038859320
 
 [1m== Where each job ran[0m
-  build: success on GitHub Actions 1000001869
-  own-pipeline: success on GitHub Actions 1000001870
-  assessor-main / assess: success on GitHub Actions 1000001871
-  assessor-current / assess: success on GitHub Actions 1000001872
-  assessor-old / assess: success on GitHub Actions 1000001873
+  build: success on GitHub Actions 1000001974
+  own-pipeline: success on GitHub Actions 1000001975
+  assessor-old / assess: success on GitHub Actions 1000001978
+  assessor-prev / assess: success on GitHub Actions 1000001976
+  assessor-main / assess: success on GitHub Actions 1000001979
+  assessor-current / assess: success on GitHub Actions 1000001977
   build: success on otrust-attack-runner
-  hijack / assess: success on GitHub Actions 1000001874
+  hijack / assess: success on GitHub Actions 1000001980
   own-self-hosted: success on otrust-attack-runner
 
 [1m== Buyer: every certificate, verified (attack, policy, result, trust level the signature proves)[0m
   ✔ assessor-current       strict         VERIFIED          L1+isolated-assessor control: the pinned assessor, used honestly
   ✔ assessor-main          strict         UNTRUSTED_SIGNER  -                    moving ref @main: not the pinned commit
+  ✔ assessor-prev          strict         UNTRUSTED_SIGNER  -                    older assessor (0.1.15): not the pinned commit
   ✔ assessor-old           strict         UNTRUSTED_SIGNER  -                    outdated assessor (v0.1.4): not the pinned commit
   ✔ own-pipeline           strict         UNTRUSTED_SIGNER  -                    vendor's own job signs: not the assessor
   ✔ own-self-hosted        strict         UNTRUSTED_SIGNER  -                    vendor's own job on a vendor runner
-  ✔ hijack                 strict         VERIFIED          L1+isolated-assessor hijack failed: GitHub ran the assessor on GitHub Actions 1000001874
+  ✔ hijack                 strict         VERIFIED          L1+isolated-assessor hijack failed: GitHub ran the assessor on GitHub Actions 1000001980
   ✔ assessor-main          anyref         VERIFIED          L1+isolated-assessor a buyer accepting any ref takes @main (our own main)
-  ✔ assessor-old           anyref         VERIFIED          L1+isolated-assessor …and an outdated assessor: the gap
-  ✔ assessor-old           anyref-min     AGENT_OUTDATED    L1+isolated-assessor closed by minAgentVersion: 0.1.8
+  ✔ assessor-old           anyref         POLICY_UNKNOWN    L1+isolated-assessor a v0.1.4 assessor uses an earlier profile: refused
+  ✔ assessor-prev          anyref         VERIFIED          L1+isolated-assessor …but an older assessor of the current profile passes: the gap
+  ✔ assessor-prev          anyref-min     AGENT_OUTDATED    L1+isolated-assessor closed by minAgentVersion: 0.1.16
   ✔ assessor-current       anyref-min     VERIFIED          L1+isolated-assessor …which still accepts the current one
   ✔ own-self-hosted        ci-hosted      UNTRUSTED_SIGNER  -                    ci-identity buyer requiring hosted runners: runner_environment self-hosted
   ✔ own-pipeline           ci-hosted      VERIFIED          L1+ci-identity       ci-identity means the vendor's pipeline signs: accepted, at that level
   ✔ own-self-hosted        ci-any         VERIFIED          L1+ci-identity       without requireHostedRunner, a vendor runner is accepted too
 
-[1m== Summary: 13 as expected, 0 not (work dir /Users/dmauri/.cache/otrust-attacks)[0m
+[1m== Summary: 15 as expected, 0 not (work dir /Users/dmauri/.cache/otrust-attacks)[0m

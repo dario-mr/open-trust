@@ -56,10 +56,10 @@ go build -C "$repo" -o "$PWD/otrust" ./cmd/otrust || exit 2
 base='    issuer: https://token.actions.githubusercontent.com
     sourceRepo: https://github.com/dario-mr/open-trust-attacks
     sourceRef: refs/heads/main'
-pin=5717e68a21ac99225eccff6850dd90e096ceda94 # the assessor at v0.1.9
-printf 'minTrustLevel: L1+isolated-assessor\nsigners:\n  - name: the assessor at v0.1.9, pinned by commit\n%s\n    buildSigner: ^https://github\\.com/dario-mr/open-trust/\\.github/workflows/assess\\.yml@%s$\n    requireHostedRunner: true\n' "$base" $pin > strict.yaml
+pin=09477585a21fdceacc434126c751fa018cad8c09 # the assessor at v0.1.16
+printf 'minTrustLevel: L1+isolated-assessor\nsigners:\n  - name: the assessor at v0.1.16, pinned by commit\n%s\n    buildSigner: ^https://github\\.com/dario-mr/open-trust/\\.github/workflows/assess\\.yml@%s$\n    requireHostedRunner: true\n' "$base" $pin > strict.yaml
 printf 'minTrustLevel: L1+isolated-assessor\nsigners:\n  - name: the assessor at any ref\n%s\n    buildSigner: ^https://github\\.com/dario-mr/open-trust/\\.github/workflows/assess\\.yml@\n    requireHostedRunner: true\n' "$base" > anyref.yaml
-(printf 'minAgentVersion: 0.1.8\n'; cat anyref.yaml) > anyref-min.yaml
+(printf 'minAgentVersion: 0.1.16\n'; cat anyref.yaml) > anyref-min.yaml
 printf 'minTrustLevel: L1+ci-identity\nsigners:\n  - name: the vendor CI, hosted runners\n%s\n    requireHostedRunner: true\n' "$base" > ci-hosted.yaml
 printf 'minTrustLevel: L1+ci-identity\nsigners:\n  - name: the vendor CI, any runner\n%s\n' "$base" > ci-any.yaml
 
@@ -77,13 +77,15 @@ ia=a/image/image.oci.tar ib=b/otrust-own-self-hosted/image.oci.tar
 say "Buyer: every certificate, verified (attack, policy, result, trust level the signature proves)"
 check a/otrust-assessor-current $ia strict.yaml VERIFIED "control: the pinned assessor, used honestly"
 check a/otrust-assessor-main $ia strict.yaml UNTRUSTED_SIGNER "moving ref @main: not the pinned commit"
+check a/otrust-assessor-prev $ia strict.yaml UNTRUSTED_SIGNER "older assessor (0.1.15): not the pinned commit"
 check a/otrust-assessor-old $ia strict.yaml UNTRUSTED_SIGNER "outdated assessor (v0.1.4): not the pinned commit"
 check a/otrust-own-pipeline $ia strict.yaml UNTRUSTED_SIGNER "vendor's own job signs: not the assessor"
 check b/otrust-own-self-hosted/otrust-out $ib strict.yaml UNTRUSTED_SIGNER "vendor's own job on a vendor runner"
 check b/otrust-hijack b/image/image.oci.tar strict.yaml VERIFIED "hijack failed: GitHub ran the assessor on $hijack_runner"
 check a/otrust-assessor-main $ia anyref.yaml VERIFIED "a buyer accepting any ref takes @main (our own main)"
-check a/otrust-assessor-old $ia anyref.yaml VERIFIED "…and an outdated assessor: the gap"
-check a/otrust-assessor-old $ia anyref-min.yaml AGENT_OUTDATED "closed by minAgentVersion: 0.1.8"
+check a/otrust-assessor-old $ia anyref.yaml POLICY_UNKNOWN "a v0.1.4 assessor uses an earlier profile: refused"
+check a/otrust-assessor-prev $ia anyref.yaml VERIFIED "…but an older assessor of the current profile passes: the gap"
+check a/otrust-assessor-prev $ia anyref-min.yaml AGENT_OUTDATED "closed by minAgentVersion: 0.1.16"
 check a/otrust-assessor-current $ia anyref-min.yaml VERIFIED "…which still accepts the current one"
 check b/otrust-own-self-hosted/otrust-out $ib ci-hosted.yaml UNTRUSTED_SIGNER "ci-identity buyer requiring hosted runners: runner_environment self-hosted"
 check a/otrust-own-pipeline $ia ci-hosted.yaml VERIFIED "ci-identity means the vendor's pipeline signs: accepted, at that level"
