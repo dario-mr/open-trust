@@ -114,7 +114,11 @@ func signedRevocations(b []byte, tm func() (root.TrustedMaterial, error), now ti
 	if now.After(until) {
 		return nil, "", fmt.Errorf("revocation list expired at %s; fetch a fresh one (--online)", rl.ValidUntil)
 	}
-	return &rl, fmt.Sprintf("revocations checked against the signed Open Trust list (%d entries, valid until %s)", len(rl.Revoked), rl.ValidUntil), nil
+	n := fmt.Sprintf("%d entries", len(rl.Revoked))
+	if len(rl.Revoked) == 1 {
+		n = "1 entry"
+	}
+	return &rl, fmt.Sprintf("revocations checked against the signed Open Trust list (%s, valid until %s)", n, rl.ValidUntil), nil
 }
 
 func (rl *revocationList) match(subjectDigest, agentDigest, signerID string) string {

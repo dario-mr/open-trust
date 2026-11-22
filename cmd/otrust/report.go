@@ -238,7 +238,12 @@ func markdownReport(r *verify.Report, certificate, image string) string {
 		}
 		fmt.Fprintf(&b, "\n## %s\n\n", s.title)
 		for _, it := range s.items {
-			fmt.Fprintf(&b, "- %s %s\n", it.mark, strings.Join(strings.Fields(it.text), " "))
+			text := strings.Join(strings.Fields(it.text), " ")
+			if it.mark == "-" { // a plain list item: the bullet is the mark
+				fmt.Fprintf(&b, "- %s\n", text)
+			} else {
+				fmt.Fprintf(&b, "- %s %s\n", it.mark, text)
+			}
 			for _, x := range it.sub {
 				fmt.Fprintf(&b, "  - %s\n", x)
 			}

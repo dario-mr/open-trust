@@ -120,6 +120,8 @@ The report starts with the verdict and what it means for you, in one sentence. T
 - **Your re-check** (`--recheck`) and the **changes since the previous certificate** (`--previous`): new and resolved findings, check results, source revision, trust level and exceptions. The previous certificate must pass your trust policy too; if your policy pins the assessor's commit, list the old assessor as a second signer.
 - **What this does not prove**: the certificate's limitations and the limits of its trust level. **A PASSED result always shows these.** Read them, because an exception is a known risk the vendor chose to accept.
 
+[Examples of real reports](../demo/reports/README.md): verified, failed, and a lying vendor caught by `--recheck`.
+
 The last line is always the result code (`VERIFIED`, or `CODE: reason`), for scripts. `--report report.md` writes the same report as Markdown, ready to forward to your security or procurement team.
 
 | Result | Exit | Meaning |
