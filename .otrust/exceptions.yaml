@@ -12,3 +12,7 @@
   id: dockerfile.security.last-user-is-root.last-user-is-root
   reason: demo/jenkins/Dockerfile is a local test harness that runs Jenkins as root to use the host's docker socket; it is not shipped.
   expires: "2027-05-21T00:00:00Z"
+- check: sast
+  id: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
+  reason: internal/adapters runs the scanners as host binaries (--scanners local) - otrust's own sha256-pinned Syft and Trivy, or Semgrep from PATH at the pinned version - with arguments otrust builds, no shell. Exceptions apply per rule, so this also covers any later use of the pattern in this repository; review new exec calls by hand.
+  expires: "2027-05-22T00:00:00Z"
