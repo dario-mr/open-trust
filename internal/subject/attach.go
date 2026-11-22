@@ -1,7 +1,9 @@
 package subject
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
@@ -12,6 +14,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/static"
 	"github.com/google/go-containerregistry/pkg/v1/types"
@@ -47,18 +50,14 @@ func Attach(ctx context.Context, ref, manifestDigest string, bundle []byte, anno
 	if err != nil {
 		return "", fmt.Errorf("attach: %s: %w", target, err)
 	}
-	img, err := mutate.Append(empty.Image, mutate.Addendum{Layer: static.NewLayer(bundle, bundleMediaType)})
-	if err != nil {
-		return "", err
-	}
-	img = mutate.MediaType(img, types.OCIManifestSchema1)
-	img = mutate.ConfigMediaType(img, CertificateArtifactType)
 	a := map[string]string{"org.opencontainers.image.created": time.Now().UTC().Format(time.RFC3339)}
 	for k, v := range annotations {
 		a[k] = v
 	}
-	img = mutate.Annotations(img, a).(v1.Image)
-	img = mutate.Subject(img, v1.Descriptor{MediaType: head.MediaType, Size: head.Size, Digest: head.Digest}).(v1.Image)
+	img, err := newArtifact(bundle, a, v1.Descriptor{MediaType: head.MediaType, Size: head.Size, Digest: head.Digest})
+	if err != nil {
+		return "", err
+	}
 	d, err := img.Digest()
 	if err != nil {
 		return "", err
@@ -134,4 +133,61 @@ func FindCertificates(ctx context.Context, ref string) ([]Attached, error) {
 	}
 	sort.SliceStable(found, func(i, j int) bool { return found[i].Created > found[j].Created })
 	return found, nil
+}
+
+// artifact is an OCI 1.1 artifact manifest: artifactType set, an empty "{}" config, the bundle as its
+// one layer, and a subject. Registries that check config media types (GitLab) accept this form.
+type artifact struct {
+	v1.Image // the bundle layer
+	raw      []byte
+	manifest *v1.Manifest
+}
+
+var emptyConfig = []byte("{}")
+
+func newArtifact(bundle []byte, annotations map[string]string, subject v1.Descriptor) (*artifact, error) {
+	base, err := mutate.Append(empty.Image, mutate.Addendum{Layer: static.NewLayer(bundle, bundleMediaType)})
+	if err != nil {
+		return nil, err
+	}
+	layers, err := base.Layers()
+	if err != nil {
+		return nil, err
+	}
+	ld, err := partial.Descriptor(layers[0])
+	if err != nil {
+		return nil, err
+	}
+	ch, _, err := v1.SHA256(bytes.NewReader(emptyConfig))
+	if err != nil {
+		return nil, err
+	}
+	m := &v1.Manifest{
+		SchemaVersion: 2, MediaType: types.OCIManifestSchema1, ArtifactType: CertificateArtifactType,
+		Config:      v1.Descriptor{MediaType: types.OCIEmptyJSON, Size: int64(len(emptyConfig)), Digest: ch},
+		Layers:      []v1.Descriptor{*ld},
+		Annotations: annotations, Subject: &subject,
+	}
+	raw, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	return &artifact{Image: base, raw: raw, manifest: m}, nil
+}
+
+func (a *artifact) MediaType() (types.MediaType, error) { return types.OCIManifestSchema1, nil }
+func (a *artifact) RawManifest() ([]byte, error)        { return a.raw, nil }
+func (a *artifact) Manifest() (*v1.Manifest, error)     { return a.manifest, nil }
+func (a *artifact) Size() (int64, error)                { return int64(len(a.raw)), nil }
+func (a *artifact) ArtifactType() (string, error)       { return CertificateArtifactType, nil }
+func (a *artifact) RawConfigFile() ([]byte, error)      { return emptyConfig, nil }
+func (a *artifact) ConfigName() (v1.Hash, error)        { return a.manifest.Config.Digest, nil }
+func (a *artifact) Digest() (v1.Hash, error) {
+	h, _, err := v1.SHA256(bytes.NewReader(a.raw))
+	return h, err
+}
+
+// ConfigLayer makes remote.Write upload the "{}" config blob under its own media type.
+func (a *artifact) ConfigLayer() (v1.Layer, error) {
+	return static.NewLayer(emptyConfig, types.OCIEmptyJSON), nil
 }
