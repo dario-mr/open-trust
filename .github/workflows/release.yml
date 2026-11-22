@@ -122,10 +122,11 @@ jobs:
       subject-name: ghcr.io/dario-mr/otrust
 
   certificate:
-    needs: assess
+    needs: [release, assess]
     runs-on: ubuntu-24.04
     permissions:
       contents: write # attach the certificate to the release
+      packages: write # and to the image, so buyers verify ghcr.io/<owner>/otrust by reference alone
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -139,3 +140,16 @@ jobs:
           cp out/certificate.sigstore.json otrust-image.certificate.sigstore.json
           tar -czf otrust-image.evidence.tar.gz -C out .
           gh release upload "$GITHUB_REF_NAME" otrust-image.certificate.sigstore.json otrust-image.evidence.tar.gz --repo "$GITHUB_REPOSITORY"
+      - name: Attach the certificate to the image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          IMAGE: ${{ needs.release.outputs.image-ref }}
+        run: |
+          set -euo pipefail
+          # the binary this very release published (and attested); attaching adds no trust
+          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" -p otrust-linux-amd64 -p SHA256SUMS
+          sha256sum -c --ignore-missing SHA256SUMS
+          chmod +x otrust-linux-amd64
+          docker login ghcr.io -u "$ACTOR" --password-stdin <<<"$GH_TOKEN"
+          ./otrust-linux-amd64 attach otrust-image.certificate.sigstore.json --image "$IMAGE"
