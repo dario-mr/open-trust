@@ -60,6 +60,10 @@ scenario "1b. The same app on GitLab: the vendor's own pipeline signs, so only c
 	v gl/otrust-out/certificate.sigstore.json --image "registry.gitlab.com/$DEMO@$(subj gl/otrust-out/certificate.sigstore.json)" --trust-policy trust-gitlab.yaml --evidence gl/otrust-out
 scenario "1d. Re-check: the buyer scans the image themselves and compares packages with the vendor's SBOM" VERIFIED \
 	v gh/otrust-image-clean/certificate.sigstore.json --image gh/image-clean/image.oci.tar --trust-policy trust.yaml --evidence gh/otrust-image-clean --recheck
+scenario "1e. No certificate file: verify by image reference alone (the certificate is attached to the ghcr.io image)" VERIFIED \
+	v --image "ghcr.io/$DEMO@$(subj gh/otrust-image-clean/certificate.sigstore.json)" --trust-policy trust.yaml
+scenario "1f. The same on GitLab's registry" VERIFIED \
+	v --image "registry.gitlab.com/$DEMO@$(subj gl/otrust-out/certificate.sigstore.json)" --trust-policy trust-gitlab.yaml
 sed 's/^minTrustLevel: .*/minTrustLevel: L1+isolated-assessor/' trust-gitlab.yaml > trust-gitlab-strict.yaml
 scenario "1c. A buyer who demands the isolated assessor rejects the GitLab certificate" TRUST_LEVEL_TOO_LOW \
 	v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab-strict.yaml
