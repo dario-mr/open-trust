@@ -5,7 +5,7 @@
 
 ## Working here
 
-- Build and test: `go test ./...`. Policy tests (pinned OPA in docker): `profiles/supply-chain-baseline/v1/test.sh`.
+- Build and test: `go test ./...`. Policy tests (pinned OPA in docker): `profiles/supply-chain-baseline/v1/test.sh`. CI also runs the end-to-end tests with the real scanners: `profiles/supply-chain-baseline/v1/fixtures/generate.sh` then `OTRUST_E2E=1 go test -count=1 ./internal/assess/ ./internal/verify/` (needs docker; `generate.sh` rewrites the tracked fixture inputs, so restore them unless the change is intended).
 - The profile is `profiles/supply-chain-baseline/v1`: `policy.rego` (with `policy_test.rego`), `tools.json` (scanner pins), `profile.md` (the spec).
 - Each release assesses otrust itself, with this repository's own exceptions in `.otrust/exceptions.yaml`. A release whose self-assessment fails has no certificate: fix the finding or add a narrow, per-file exception with a reason.
 - End-to-end demos: `demo/scenarios.sh` (buyer side), `demo/jenkins/run.sh`, `demo/attacks/run.sh`, `demo/kms/vault.sh`. Their `RESULTS.txt` files are recorded runs.
