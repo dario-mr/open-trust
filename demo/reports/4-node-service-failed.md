@@ -2,7 +2,7 @@
 
 The certificate is genuine, but the image failed the assessment. Review the failed checks before you deploy it.
 
-Certificate `out-room/certificate.sigstore.json`, image `room.oci.tar`.
+Certificate `out-room16/certificate.sigstore.json`, image `room.oci.tar`.
 
 > ASSESSMENT_FAILED: assessment result is FAILED
 
@@ -11,7 +11,7 @@ Certificate `out-room/certificate.sigstore.json`, image `room.oci.tar`.
 - ✔ Signed by "excalidraw-room vendor key" from your trust policy (key 3pHvnSOr3XB8d6BE+5BhvpD6xijTg5J03fW0coNBXO4=)
 - ✔ For exactly this image: sha256:6d9fc4b67189b2cabff1fb31591eeb1faaf5c07abe11ba76ebf8376f13e1e6a5
 - ✔ Built from https://github.com/excalidraw/excalidraw-room.git @ 03ff435860b508d7cd9e005cfc90f7977ae2a593 (generic)
-- ✔ Assessed 2026-11-21T16:50:05Z with https://open-trust.dev/profiles/supply-chain-baseline/1.0.0, valid until 2026-12-21T16:50:05Z
+- ✔ Assessed 2026-11-22T15:27:52Z with https://open-trust.dev/profiles/supply-chain-baseline/1.2.0, valid until 2026-12-22T15:27:52Z
 - ✔ Trust level L1: whoever holds the vendor's key signed it
 - ✔ The vendor's evidence matches its digests and re-evaluates to the same results
 
@@ -86,7 +86,7 @@ Certificate `out-room/certificate.sigstore.json`, image `room.oci.tar`.
 - ⚠ provenance WARN
   - provenance is not signed
 - ✔ subject_binding PASSED
-- ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-21T16:49:55Z)
+- ℹ SAST rules p/default sha256:9c76333af7c9555a45560d8398cf5fa03432d8f86ca4e458eac3686599fd8f1b (1074 rules, fetched 2026-11-22T15:27:47Z)
 
 ## Risks the vendor accepted
 

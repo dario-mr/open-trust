@@ -8,10 +8,10 @@ Certificate `gh/otrust-image-vulnerable/certificate.sigstore.json`, image `gh/im
 
 ## What this proves
 
-- ✔ Signed by "Open Trust assessor (78c55a0a2b31ae0fc480f675757681ad0b473d36) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@78c55a0a2b31ae0fc480f675757681ad0b473d36)
-- ✔ For exactly this image: sha256:039ea714285369439b9d6f222f8781a5913bbb574f15db5646b61a9e475080c0
-- ✔ Built from https://github.com/dario-mr/open-trust-demo @ 15ce3ae0b95d2b382b8a296770e35fe3a55ede89 (github)
-- ✔ Assessed 2026-11-21T23:37:33Z with https://open-trust.dev/profiles/supply-chain-baseline/1.1.0, valid until 2026-12-21T23:37:33Z
+- ✔ Signed by "Open Trust assessor (09477585a21fdceacc434126c751fa018cad8c09) for open-trust-demo" from your trust policy (https://github.com/dario-mr/open-trust/.github/workflows/assess.yml@09477585a21fdceacc434126c751fa018cad8c09)
+- ✔ For exactly this image: sha256:09003e8ee7262f7e5cef54bf298fd10b0900d0c76502a11d3af59e5a60bbfc09
+- ✔ Built from https://github.com/dario-mr/open-trust-demo @ a2a5809d9ff44c193f4916f8f57c9b7d6ef1d9a3 (github)
+- ✔ Assessed 2026-11-22T15:20:03Z with https://open-trust.dev/profiles/supply-chain-baseline/1.2.0, valid until 2026-12-22T15:20:03Z
 - ✔ Trust level L1+isolated-assessor: the published Open Trust assessor ran unmodified on a hosted runner; the vendor could not add steps to it
 
 ## Checks, as the vendor's assessment reports them
@@ -26,7 +26,7 @@ Certificate `gh/otrust-image-vulnerable/certificate.sigstore.json`, image `gh/im
   - semgrep reported 6 scan error(s)
 - ✔ provenance PASSED
 - ✔ subject_binding PASSED
-- ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-21T23:37:09Z)
+- ℹ SAST rules p/default sha256:43b45d8719a2f40ca83a0b88750ca4bd3583baa9b48380ef9d28d4c51bae966e (1074 rules, fetched 2026-11-22T15:19:40Z)
 
 ## Risks the vendor accepted
 

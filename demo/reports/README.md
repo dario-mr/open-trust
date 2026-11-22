@@ -1,6 +1,6 @@
 # What a buyer sees
 
-Real `otrust verify` reports, written with `--report <file>.md` from real certificates (otrust v0.1.11+):
+Real `otrust verify` reports, written with `--report <file>.md` from real certificates (otrust v0.1.16, profile 1.2.0):
 
 | Report | Situation | Result |
 |---|---|---|
