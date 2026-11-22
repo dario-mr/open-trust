@@ -6,7 +6,7 @@
 #   OTRUST_IMAGE=image.oci.tar OTRUST_KEY=/path/to/vendor.key sh otrust-assess.sh
 #
 # Inputs (environment):
-#   OTRUST_VERSION   otrust release to use, e.g. v0.1.12 (required)
+#   OTRUST_VERSION   otrust release to use, e.g. v0.1.13 (required)
 #   OTRUST_SHA256    sha256 of otrust-<os>-<arch> for that release (required), or one pin per platform for
 #                    mixed agent pools: OTRUST_SHA256_LINUX_AMD64, OTRUST_SHA256_LINUX_ARM64, … Check each
 #                    binary once with `gh attestation verify otrust-linux-amd64 -R dario-mr/open-trust` and
@@ -28,7 +28,7 @@
 # common on Jenkins), keep the workspace on a volume mounted at the same path on the host.
 set -eu
 
-: "${OTRUST_VERSION:?set OTRUST_VERSION, e.g. v0.1.12}"
+: "${OTRUST_VERSION:?set OTRUST_VERSION, e.g. v0.1.13}"
 : "${OTRUST_IMAGE:?set OTRUST_IMAGE to an OCI layout or name@sha256:...}"
 OTRUST_SOURCE=${OTRUST_SOURCE:-.}
 OTRUST_OUT=${OTRUST_OUT:-$PWD/otrust-out}
