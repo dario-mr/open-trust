@@ -13,7 +13,7 @@ It does **not** say the software is secure. The scanners find *known* vulnerabil
 Download the binary for your platform from the [releases](https://github.com/dario-mr/open-trust/releases) and check it before you rely on it. With the GitHub CLI, this proves the binary was built by this repository's release workflow:
 
 ```bash
-gh release download v0.1.13 -R dario-mr/open-trust -p otrust-linux-amd64   # or -darwin-arm64, …
+gh release download v0.1.14 -R dario-mr/open-trust -p otrust-linux-amd64   # or -darwin-arm64, …
 gh attestation verify otrust-linux-amd64 -R dario-mr/open-trust \
   --signer-workflow dario-mr/open-trust/.github/workflows/release.yml
 chmod +x otrust-linux-amd64 && mv otrust-linux-amd64 otrust
@@ -59,11 +59,11 @@ A sample `trust.yaml` that accepts only the Open Trust assessor at a pinned vers
 ```yaml
 minTrustLevel: L1+isolated-assessor
 signers:
-  - name: Acme svc, via the Open Trust assessor v0.1.13
+  - name: Acme svc, via the Open Trust assessor v0.1.14
     issuer: https://token.actions.githubusercontent.com
     sourceRepo: https://github.com/acme/svc
     sourceRef: refs/heads/main
-    buildSigner: ^https://github\.com/dario-mr/open-trust/\.github/workflows/assess\.yml@<commit of v0.1.13>$
+    buildSigner: ^https://github\.com/dario-mr/open-trust/\.github/workflows/assess\.yml@<commit of v0.1.14>$
     requireHostedRunner: true
 ```
 

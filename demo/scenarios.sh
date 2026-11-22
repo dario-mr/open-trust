@@ -8,7 +8,7 @@
 set -uo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-VERSION=${VERSION:-v0.1.13}
+VERSION=${VERSION:-v0.1.14}
 DEMO=dario-mr/open-trust-demo
 # the last run of the pre-release assessor (df86e37), whose otrust binary is revoked in trust/revocations.json
 OLD_RUN=${OLD_RUN:-43610582278}

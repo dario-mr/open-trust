@@ -27,7 +27,7 @@ import (
 	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
 
-const Version = "0.1.13"
+const Version = "0.1.14"
 
 type Options struct {
 	Image      string // OCI layout dir or tar
