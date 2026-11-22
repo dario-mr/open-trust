@@ -20,11 +20,15 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
-// CertificateArtifactType marks an Open Trust certificate attached to an image as an OCI referrer.
-// Its single layer is the Sigstore bundle.
-const CertificateArtifactType = "application/vnd.dev.open-trust.certificate.v1+json"
+// CertificateArtifactType is the artifactType of an attached certificate: the Sigstore bundle's own
+// media type, as GitHub attestations and cosign use, since registries such as GitLab's accept only
+// known artifact types. Other tools attach bundles too, so FindCertificates also reads each one.
+const CertificateArtifactType = "application/vnd.dev.sigstore.bundle.v0.3+json"
 
-const bundleMediaType = "application/vnd.dev.sigstore.bundle.v0.3+json"
+// legacyArtifactType is what v0.1.12 attached; still found.
+const legacyArtifactType = "application/vnd.dev.open-trust.certificate.v1+json"
+
+const bundleMediaType = CertificateArtifactType
 
 // Attached is a certificate found on a registry image.
 type Attached struct {
@@ -108,7 +112,7 @@ func FindCertificates(ctx context.Context, ref string) ([]Attached, error) {
 			return nil, err
 		}
 		for _, c := range m.Manifests {
-			if c.ArtifactType != CertificateArtifactType {
+			if c.ArtifactType != CertificateArtifactType && c.ArtifactType != legacyArtifactType {
 				continue
 			}
 			img, err := remote.Image(d.Context().Digest(c.Digest.String()), opts...)
@@ -128,7 +132,10 @@ func FindCertificates(ctx context.Context, ref string) ([]Attached, error) {
 			if err != nil {
 				return nil, err
 			}
-			found = append(found, Attached{Digest: c.Digest.String(), Created: c.Annotations["org.opencontainers.image.created"], Bundle: b})
+			if !isCertificate(b) {
+				continue // another tool's bundle, e.g. build provenance
+			}
+			found = append(found, Attached{Digest: c.Digest.String(), Created: created(c, img), Bundle: b})
 		}
 	}
 	sort.SliceStable(found, func(i, j int) bool { return found[i].Created > found[j].Created })
@@ -190,4 +197,35 @@ func (a *artifact) Digest() (v1.Hash, error) {
 // ConfigLayer makes remote.Write upload the "{}" config blob under its own media type.
 func (a *artifact) ConfigLayer() (v1.Layer, error) {
 	return static.NewLayer(emptyConfig, types.OCIEmptyJSON), nil
+}
+
+// isCertificate tells an Open Trust certificate from other Sigstore bundles (provenance, SBOMs)
+// without verifying it: verify does that afterwards.
+func isCertificate(bundle []byte) bool {
+	var b struct {
+		DsseEnvelope struct {
+			Payload []byte `json:"payload"`
+		} `json:"dsseEnvelope"`
+	}
+	var st struct {
+		PredicateType string                     `json:"predicateType"`
+		Predicate     map[string]json.RawMessage `json:"predicate"`
+	}
+	if json.Unmarshal(bundle, &b) != nil || json.Unmarshal(b.DsseEnvelope.Payload, &st) != nil {
+		return false
+	}
+	_, ok := st.Predicate["https://open-trust.dev/assessment/v0.1"]
+	return st.PredicateType == "https://slsa.dev/verification_summary/v1" && ok
+}
+
+// created reads the creation time from the referrer descriptor, or else from its manifest: the
+// fallback tag index carries no annotations.
+func created(d v1.Descriptor, img v1.Image) string {
+	if c := d.Annotations["org.opencontainers.image.created"]; c != "" {
+		return c
+	}
+	if m, err := img.Manifest(); err == nil {
+		return m.Annotations["org.opencontainers.image.created"]
+	}
+	return ""
 }

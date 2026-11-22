@@ -18,12 +18,15 @@ func TestAttachAndFindCertificates(t *testing.T) {
 	if found, err := FindCertificates(ctx, repo+"@"+idx); err != nil || len(found) != 0 {
 		t.Fatalf("before attaching: %v, %v", found, err)
 	}
-	first, err := Attach(ctx, repo+"@"+idx, img, []byte(`{"cert":1}`), map[string]string{"dev.open-trust.result": "FAILED"})
+	first, err := Attach(ctx, repo+"@"+idx, img, fakeCert("FAILED"), map[string]string{"dev.open-trust.result": "FAILED"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(1100 * time.Millisecond) // created has second resolution
-	second, err := Attach(ctx, repo+"@"+idx, img, []byte(`{"cert":2}`), nil)
+	if _, err := Attach(ctx, repo+"@"+idx, img, []byte(`{"dsseEnvelope":{"payload":"e30="}}`), nil); err != nil {
+		t.Fatal(err) // another tool's bundle on the same image: not a certificate
+	}
+	second, err := Attach(ctx, repo+"@"+idx, img, fakeCert("PASSED"), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +35,7 @@ func TestAttachAndFindCertificates(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(found) != 2 || found[0].Digest != second || string(found[0].Bundle) != `{"cert":2}` || found[1].Digest != first {
+		if len(found) != 2 || found[0].Digest != second || string(found[0].Bundle) != string(fakeCert("PASSED")) || found[1].Digest != first {
 			t.Fatalf("%s: %+v", ref, found)
 		}
 	}
@@ -54,4 +57,10 @@ func TestAttachAndFindCertificates(t *testing.T) {
 	if _, err := FindCertificates(ctx, repo+":v1"); err == nil {
 		t.Fatal("a tag must be refused")
 	}
+}
+
+func fakeCert(result string) []byte {
+	payload := `{"predicateType":"https://slsa.dev/verification_summary/v1","predicate":{"verificationResult":"` + result + `","https://open-trust.dev/assessment/v0.1":{}}}`
+	b, _ := json.Marshal(map[string]any{"dsseEnvelope": map[string]any{"payload": []byte(payload)}})
+	return b
 }
