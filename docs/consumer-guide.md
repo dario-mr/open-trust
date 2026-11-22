@@ -34,6 +34,14 @@ otrust verify certificate.sigstore.json --image image.oci.tar --trust-policy tru
   [--report report.md]                # also write the report as Markdown, to pass on
 ```
 
+**If the vendor attached the certificate to the image** (`otrust assess --attach` or `otrust attach`), you don't need the file at all: leave the certificate out and give the image by its registry reference. otrust finds the newest certificate attached to that image and says which one it used:
+
+```bash
+otrust verify --image ghcr.io/acme/svc@sha256:… --trust-policy trust.yaml --online
+```
+
+Attaching adds no trust: the certificate is checked exactly as if you had received the file.
+
 `--online` fetches two things: Sigstore's trusted root (checked against the root built into otrust), needed to check a keyless certificate's signature, and the signed Open Trust revocation list. To verify with no network at all, save the trusted root once with `gh attestation trusted-root > root.json`, pass `--trusted-root root.json` instead of `--online`, and pass the image as a file. A registry reference pulls the image first, and the certificate must name that image (a different digest gives `ARTIFACT_MISMATCH`). `--evidence` re-checks the vendor's raw scan output against the certificate and re-runs the policy, which catches a summary that does not match its evidence.
 
 ### Re-check: don't take the vendor's word for the image

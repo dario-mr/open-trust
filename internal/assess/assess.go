@@ -41,6 +41,9 @@ type Options struct {
 	// unsigned BuildKit provenance attached to the image is used if present.
 	Provenance  string
 	TrustedRoot string // Sigstore trusted_root.json for checking Provenance; default: fetch via TUF
+	// Attach pushes the signed certificate to the image's registry as an OCI referrer, so buyers
+	// verify by image reference alone. Needs Image to be a registry reference and push access.
+	Attach bool
 }
 
 // BundleFile is the signed certificate a vendor hands to customers (with the image).
@@ -53,6 +56,7 @@ type Result struct {
 	CI        ci.Env
 	OutDir    string
 	Signed    bool
+	Attached  string // the certificate's referrer digest in the registry, when attached
 }
 
 func Run(ctx context.Context, o Options) (*Result, error) {
@@ -66,6 +70,9 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	}
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		return nil, err
+	}
+	if o.Attach && (o.Signer == nil || !subject.IsRef(o.Image)) {
+		return nil, fmt.Errorf("--attach needs a registry image (name@sha256:…) and a signer")
 	}
 	name := o.Name
 	img := o.Image
@@ -212,6 +219,12 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 			return nil, err
 		}
 		res.Signed = true
+		if o.Attach {
+			ann := map[string]string{"dev.open-trust.profile": dec.Profile.ID + "@" + dec.Profile.Version, "dev.open-trust.result": dec.Result}
+			if res.Attached, err = subject.Attach(ctx, o.Image, subj.Digest, b, ann); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return res, nil
 }

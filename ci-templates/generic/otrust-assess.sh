@@ -20,6 +20,8 @@
 #   OTRUST_SOURCE    source tree at the built revision (default .)
 #   OTRUST_OUT       output directory (default ./otrust-out)
 #   OTRUST_FAIL_ON_FAILED  "true" (default) fails the job when the assessment FAILED
+#   OTRUST_ATTACH    "true" attaches the certificate to OTRUST_IMAGE in its registry (needs a registry
+#                    reference and push access; otrust v0.1.12+), so buyers verify by reference alone
 #
 # Needs curl and docker; the scanners run in pinned containers. The image and OTRUST_OUT must be on
 # paths the docker daemon sees at the same path: with a mounted docker socket (docker-outside-of-docker,
@@ -54,6 +56,7 @@ else
 fi
 
 set +e
+[ "${OTRUST_ATTACH:-}" = true ] && set -- "$@" --attach
 "$bin" assess "$@" --image "$OTRUST_IMAGE" ${OTRUST_SUBJECT:+--name "$OTRUST_SUBJECT"} --source "$OTRUST_SOURCE" --out "$OTRUST_OUT"
 code=$?
 set -e

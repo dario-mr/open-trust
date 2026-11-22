@@ -11,6 +11,8 @@
 #                                             # or a registry image pinned by digest: $CI_REGISTRY_IMAGE@sha256:…
 #                                             # (this project's registry is logged in with the job token)
 #       OTRUST_SUBJECT: registry.example.com/acme/svc
+#       OTRUST_ATTACH: "true"                 # with an OTRUST_IMAGE in this project's registry: attach the
+#                                             # certificate to the image, so buyers verify by reference alone
 #
 # Trust level: L1+ci-identity. GitLab's OIDC token names the top-level pipeline, never an included
 # template, so the signature proves which project, ref and commit ran this, not that the vendor
@@ -31,6 +33,7 @@
     # under $CI_PROJECT_DIR: the dind daemon sees the job's /builds volume, not its /tmp
     OTRUST_OUT: $CI_PROJECT_DIR/otrust-out
     OTRUST_FAIL_ON_FAILED: "true"
+    OTRUST_ATTACH: "false"
   id_tokens:
     SIGSTORE_ID_TOKEN:
       aud: sigstore
@@ -46,7 +49,8 @@
   script:
     - |
       set +e
-      otrust assess --keyless --image "$OTRUST_IMAGE" --name "$OTRUST_SUBJECT" --source "$OTRUST_SOURCE" --out "$OTRUST_OUT"
+      attach=; [ "$OTRUST_ATTACH" = "true" ] && attach=--attach
+      otrust assess --keyless --image "$OTRUST_IMAGE" --name "$OTRUST_SUBJECT" --source "$OTRUST_SOURCE" --out "$OTRUST_OUT" $attach
       code=$?
       set -e
       if [ "$code" = 1 ] && [ "$OTRUST_FAIL_ON_FAILED" != "true" ]; then echo "Assessment FAILED (recorded in the certificate)"; code=0; fi

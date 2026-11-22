@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -10,11 +11,13 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 
 	"github.com/dario-mr/open-trust/internal/assess"
 	"github.com/dario-mr/open-trust/internal/ci"
 	"github.com/dario-mr/open-trust/internal/signer"
 	"github.com/dario-mr/open-trust/internal/statement"
+	"github.com/dario-mr/open-trust/internal/subject"
 	"github.com/dario-mr/open-trust/internal/verify"
 )
 
@@ -30,6 +33,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, `usage:
   otrust keygen --out <prefix>
   otrust pubkey --key <file|kms-uri>
+  otrust attach <certificate.sigstore.json> --image <name>@sha256:…
   otrust assess --image <oci-layout> (--key <file> | --no-sign) [flags]
   otrust verify <certificate.sigstore.json> --image <oci-layout> --trust-policy <trust.yaml> [flags]`)
 		return 2
@@ -43,11 +47,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdKeygen(args[1:], stdout, stderr)
 	case "pubkey":
 		return cmdPubkey(ctx, args[1:], stdout, stderr)
+	case "attach":
+		return cmdAttach(ctx, args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, assess.Version)
 		return 0
 	default:
-		fmt.Fprintf(stderr, "unknown command %q (commands: assess, verify, keygen, pubkey, version)\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q (commands: assess, verify, attach, keygen, pubkey, version)\n", args[0])
 		return 2
 	}
 }
@@ -96,6 +102,72 @@ func cmdPubkey(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	return 0
 }
 
+// cmdAttach stores an existing certificate on its image in the registry (OCI referrer). It adds no
+// trust, so anyone with push access may run it: buyers verify the signature as usual.
+func cmdAttach(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("attach", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	image := fs.String("image", "", "the assessed image in its registry, pinned by digest (name@sha256:…)")
+	var pos []string
+	for len(args) > 0 {
+		if err := fs.Parse(args); err != nil {
+			return 2
+		}
+		if fs.NArg() == 0 {
+			break
+		}
+		pos, args = append(pos, fs.Arg(0)), fs.Args()[1:]
+	}
+	if len(pos) != 1 || !subject.IsRef(*image) {
+		fmt.Fprintln(stderr, "usage: otrust attach <certificate.sigstore.json> --image <name>@sha256:…")
+		return 2
+	}
+	b, err := os.ReadFile(pos[0])
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", err)
+		return 2
+	}
+	digest, ann, err := certificateSubject(b)
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", pos[0], err)
+		return 2
+	}
+	d, err := subject.Attach(ctx, *image, digest, b, ann)
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", err)
+		return 2
+	}
+	fmt.Fprintf(stdout, "attached %s to %s as %s\n", pos[0], digest, d)
+	return 0
+}
+
+// certificateSubject reads, without verifying (attaching adds no trust), the image manifest digest
+// a certificate is about, and annotations for its referrer.
+func certificateSubject(bundle []byte) (string, map[string]string, error) {
+	var b struct {
+		DsseEnvelope struct {
+			Payload []byte `json:"payload"`
+		} `json:"dsseEnvelope"`
+	}
+	var st struct {
+		Subject []struct {
+			Digest map[string]string `json:"digest"`
+		} `json:"subject"`
+		Predicate struct {
+			Policy             struct{ URI string } `json:"policy"`
+			VerificationResult string               `json:"verificationResult"`
+		} `json:"predicate"`
+	}
+	if err := json.Unmarshal(bundle, &b); err != nil || json.Unmarshal(b.DsseEnvelope.Payload, &st) != nil || len(st.Subject) != 1 || st.Subject[0].Digest["sha256"] == "" {
+		return "", nil, errors.New("is not an Open Trust certificate (Sigstore bundle with one sha256 subject)")
+	}
+	ann := map[string]string{"dev.open-trust.result": st.Predicate.VerificationResult}
+	if i := strings.LastIndex(st.Predicate.Policy.URI, "/profiles/"); i >= 0 {
+		ann["dev.open-trust.profile"] = strings.Replace(st.Predicate.Policy.URI[i+len("/profiles/"):], "/", "@", 1)
+	}
+	return "sha256:" + st.Subject[0].Digest["sha256"], ann, nil
+}
+
 func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("assess", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -109,6 +181,7 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Exceptions, "exceptions", "", "exceptions file (default: <source>/.otrust/exceptions.yaml)")
 	fs.StringVar(&o.Provenance, "provenance", "", "signed SLSA provenance bundle for the image (e.g. from actions/attest-build-provenance)")
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json to check --provenance (default: fetch via TUF)")
+	fs.BoolVar(&o.Attach, "attach", false, "attach the signed certificate to the registry image (OCI referrer), so buyers verify by image reference alone")
 	noSign := fs.Bool("no-sign", false, "write an unsigned statement only (local testing)")
 	keyPath := fs.String("key", "", "sign with an ECDSA P-256 key (trust level L1): a key file (see `otrust keygen`) or a KMS key URI (awskms://, gcpkms://, azurekms://, hashivault://)")
 	keyless := fs.Bool("keyless", false, "sign with the CI's OIDC identity via Sigstore (Fulcio + Rekor)")
@@ -190,6 +263,9 @@ func printSummary(w io.Writer, r *assess.Result) {
 		ext := r.Statement.Predicate[statement.ExtensionKey].(statement.Extension)
 		fmt.Fprintf(w, "Trust     %s\n", ext.TrustLevel)
 		fmt.Fprintf(w, "Output    %s  (give this and the image to customers)\n", filepath.Join(r.OutDir, assess.BundleFile))
+		if r.Attached != "" {
+			fmt.Fprintf(w, "Attached  to the image's registry as %s: buyers verify with just --image and the same reference\n", r.Attached)
+		}
 	} else {
 		fmt.Fprintln(w, "Trust     unsigned (no signature; for local testing only)")
 		fmt.Fprintf(w, "Output    %s\n", filepath.Join(r.OutDir, "statement.json"))
@@ -221,19 +297,47 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		}
 		pos, args = append(pos, fs.Arg(0)), fs.Args()[1:]
 	}
-	if len(pos) != 1 || o.Image == "" {
-		fmt.Fprintln(stderr, "usage: otrust verify <certificate.sigstore.json> --image <oci-layout> --trust-policy <trust.yaml> [flags]")
+	if len(pos) > 1 || o.Image == "" || (len(pos) == 0 && !subject.IsRef(o.Image)) {
+		fmt.Fprintln(stderr, "usage: otrust verify [<certificate.sigstore.json>] --image <oci-layout | name@sha256:…> --trust-policy <trust.yaml> [flags]\n  (without a certificate file, --image must be a registry image with the certificate attached)")
 		return 2
 	}
-	o.Bundle = pos[0]
+	certName, attachedNote := "", ""
+	if len(pos) == 1 {
+		o.Bundle, certName = pos[0], pos[0]
+	} else {
+		found, err := subject.FindCertificates(ctx, o.Image)
+		if err != nil {
+			fmt.Fprintln(stderr, "otrust:", err)
+			return 2
+		}
+		if len(found) == 0 {
+			fmt.Fprintf(stderr, "otrust: no Open Trust certificate is attached to %s: ask the vendor for the certificate file, or to assess with --attach\n", o.Image)
+			return 2
+		}
+		f, err := os.CreateTemp("", "otrust-attached-*.sigstore.json")
+		if err != nil {
+			fmt.Fprintln(stderr, "otrust:", err)
+			return 2
+		}
+		defer os.Remove(f.Name())
+		if _, err := f.Write(found[0].Bundle); err != nil || f.Close() != nil {
+			fmt.Fprintln(stderr, "otrust: writing the attached certificate:", err)
+			return 2
+		}
+		o.Bundle, certName = f.Name(), "attached to the image ("+found[0].Digest+")"
+		attachedNote = fmt.Sprintf("certificate found attached to the image: %s, created %s (newest of %d)", found[0].Digest, found[0].Created, len(found))
+	}
 	r, err := verify.Verify(ctx, o)
 	if err != nil {
 		fmt.Fprintln(stderr, "otrust:", err)
 		return 2
 	}
+	if attachedNote != "" {
+		r.Notes = append(r.Notes, attachedNote)
+	}
 	printReport(stdout, r)
 	if *report != "" {
-		if err := os.WriteFile(*report, []byte(markdownReport(r, o.Bundle, o.Image)), 0o644); err != nil {
+		if err := os.WriteFile(*report, []byte(markdownReport(r, certName, o.Image)), 0o644); err != nil {
 			fmt.Fprintln(stderr, "otrust:", err)
 			return 2
 		}

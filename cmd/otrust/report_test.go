@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -38,5 +39,17 @@ func TestSeverityCounts(t *testing.T) {
 	}
 	if got := severityCounts(fs[:3]); got != "" {
 		t.Errorf("short lists need no summary, got %q", got)
+	}
+}
+
+func TestCertificateSubject(t *testing.T) {
+	payload := `{"subject":[{"name":"x","digest":{"sha256":"abc"}}],"predicate":{"policy":{"uri":"https://open-trust.dev/profiles/supply-chain-baseline/1.1.0"},"verificationResult":"PASSED"}}`
+	b, _ := json.Marshal(map[string]any{"dsseEnvelope": map[string]any{"payload": []byte(payload)}})
+	d, ann, err := certificateSubject(b)
+	if err != nil || d != "sha256:abc" || ann["dev.open-trust.profile"] != "supply-chain-baseline@1.1.0" || ann["dev.open-trust.result"] != "PASSED" {
+		t.Fatalf("%s %v %v", d, ann, err)
+	}
+	if _, _, err := certificateSubject([]byte(`{"mediaType":"x"}`)); err == nil {
+		t.Fatal("not a certificate must be refused")
 	}
 }
