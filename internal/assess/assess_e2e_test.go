@@ -93,7 +93,7 @@ func TestE2EVulnerableFailsThenPassesWithExceptions(t *testing.T) {
 - {check: vulns, id: CVE-2021-45046, reason: fixture, expires: "2099-01-01T00:00:00Z"}
 - {check: vulns, id: CVE-2021-45105, reason: fixture, expires: "2099-01-01T00:00:00Z"}
 - {check: secrets, id: "config/deploy.pem#private-key", reason: fake key, expires: "2099-01-01T00:00:00Z"}
-- {check: sast, id: java.lang.security.audit.formatted-sql-string.formatted-sql-string, reason: fixture, expires: "2099-01-01T00:00:00Z"}
+- {check: sast, id: java.lang.security.audit.formatted-sql-string.formatted-sql-string, path: Main.java, reason: fixture, expires: "2099-01-01T00:00:00Z"}
 `), 0o644)
 	r = assessFixture(t, "vulnerable", outDir(t, "vulnerable-exc"), exc)
 	if r.Decision.Result != "PASSED" || len(r.Decision.ExceptionsApplied) != 5 {
