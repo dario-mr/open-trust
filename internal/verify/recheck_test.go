@@ -30,7 +30,7 @@ func fakeScan(t *testing.T, sbomFixture, vulnsFixture string) {
 	ev := &adapters.Evidence{SBOM: load(sbomFixture).SBOM, Vulns: load(vulnsFixture).Vulns,
 		TrivyDB: json.RawMessage(`{"VulnerabilityDB":{"UpdatedAt":"2026-11-20T06:00:00Z"}}`)}
 	orig := scanImage
-	scanImage = func(context.Context, string, *subject.Subject) (*adapters.Evidence, error) { return ev, nil }
+	scanImage = func(context.Context, string, *subject.Subject, bool) (*adapters.Evidence, error) { return ev, nil }
 	t.Cleanup(func() { scanImage = orig })
 }
 

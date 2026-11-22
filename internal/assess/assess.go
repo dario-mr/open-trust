@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -44,6 +45,9 @@ type Options struct {
 	// Attach pushes the signed certificate to the image's registry as an OCI referrer, so buyers
 	// verify by image reference alone. Needs Image to be a registry reference and push access.
 	Attach bool
+	// LocalScanners runs the scanners without docker: Syft and Trivy from their pinned release
+	// archives, Semgrep from PATH at the pinned version (adapters.Local).
+	LocalScanners bool
 }
 
 // BundleFile is the signed certificate a vendor hands to customers (with the image).
@@ -113,6 +117,11 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 		return nil, err
 	}
 	r := &adapters.Runner{Tools: tools, SourceDir: src, WorkDir: out, Subject: img, CacheVol: "otrust-cache"}
+	if o.LocalScanners {
+		if r.Local, err = adapters.PrepareLocal(ctx, tools, true); err != nil {
+			return nil, fmt.Errorf("scanners: %w", err)
+		}
+	}
 	// the evidence dir and the image are not source, even when they sit inside the source tree
 	for _, p := range []string{out, img} {
 		if rel, err := filepath.Rel(src, p); err == nil && rel != "." && !strings.HasPrefix(rel, "..") {
@@ -182,19 +191,15 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	var trivyDB any
 	_ = json.Unmarshal(ev.TrivyDB, &trivyDB)
 	st := statement.Build(statement.Params{
-		SubjectName:   nameOr(name, img),
-		SubjectDigest: subj.Digest,
-		AgentVersion:  Version,
-		AgentDigest:   agent,
-		Time:          now,
-		CI:            env,
-		TrustLevel:    trust,
-		Tools: map[string]any{
-			"syft":  tools.Syft,
-			"trivy": map[string]any{"version": tools.Trivy.Version, "image": tools.Trivy.Image, "db": trivyDB},
-			"semgrep": map[string]any{"version": tools.Semgrep.Version, "image": tools.Semgrep.Image, "config": tools.Semgrep.Config,
-				"ruleset": ev.SemgrepRuleset, "neutralizedIgnoreFiles": nonNil(ev.NeutralizedIgnores)},
-		},
+		SubjectName:    nameOr(name, img),
+		SubjectDigest:  subj.Digest,
+		AgentVersion:   Version,
+		AgentDigest:    agent,
+		Time:           now,
+		CI:             env,
+		TrustLevel:     trust,
+		Tools:          recordedTools(tools, trivyDB, ev, o.LocalScanners),
+		Limitations:    toolLimitations(o.LocalScanners, tools),
 		Decision:       dec,
 		Evidence:       evidenceDigests(digests),
 		ProvenanceHash: digests["provenance.json"],
@@ -301,4 +306,30 @@ func checkProvenance(o Options, subj *subject.Subject, env ci.Env) (policy.Prove
 	}
 	return policy.Provenance{Present: true, Signed: true, SignerTrusted: r.SignerTrusted, SubjectMatch: r.SubjectMatch,
 		Source: "sigstore-bundle", Signer: r.BuildSigner}, b, nil
+}
+
+// recordedTools says in the certificate which tools ran and how: the pinned image, or (local) the
+// pinned release archive's sha256, or for Semgrep the host's installation at the pinned version.
+func recordedTools(t scb.Tools, trivyDB any, ev *adapters.Evidence, local bool) map[string]any {
+	pinned := func(tool scb.Tool) map[string]any {
+		if !local {
+			return map[string]any{"version": tool.Version, "image": tool.Image}
+		}
+		a := tool.Release[runtime.GOOS+"/"+runtime.GOARCH]
+		return map[string]any{"version": tool.Version, "runner": "local", "release": a}
+	}
+	syft, trivy, semgrep := pinned(t.Syft), pinned(t.Trivy), pinned(t.Semgrep)
+	trivy["db"] = trivyDB
+	if local {
+		semgrep = map[string]any{"version": t.Semgrep.Version, "runner": "local-path"}
+	}
+	semgrep["config"], semgrep["ruleset"], semgrep["neutralizedIgnoreFiles"] = t.Semgrep.Config, ev.SemgrepRuleset, nonNil(ev.NeutralizedIgnores)
+	return map[string]any{"syft": syft, "trivy": trivy, "semgrep": semgrep}
+}
+
+func toolLimitations(local bool, t scb.Tools) []string {
+	if !local {
+		return nil
+	}
+	return []string{"Semgrep " + t.Semgrep.Version + " ran from the host's installation: its version was checked, but it is not pinned by digest like the other tools"}
 }

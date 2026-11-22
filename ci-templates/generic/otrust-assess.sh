@@ -20,10 +20,13 @@
 #   OTRUST_SOURCE    source tree at the built revision (default .)
 #   OTRUST_OUT       output directory (default ./otrust-out)
 #   OTRUST_FAIL_ON_FAILED  "true" (default) fails the job when the assessment FAILED
+#   OTRUST_SCANNERS  "docker" (default), or "local" for agents without docker (e.g. Kubernetes pods):
+#                    Syft and Trivy come from their pinned release archives, and Semgrep must be on PATH
+#                    at the pinned version (`pipx install semgrep==1.183.0`; otrust v0.1.14+)
 #   OTRUST_ATTACH    "true" attaches the certificate to OTRUST_IMAGE in its registry (needs a registry
 #                    reference and push access; otrust v0.1.13+), so buyers verify by reference alone
 #
-# Needs curl and docker; the scanners run in pinned containers. The image and OTRUST_OUT must be on
+# Needs curl, and docker unless OTRUST_SCANNERS=local; by default the scanners run in pinned containers. The image and OTRUST_OUT must be on
 # paths the docker daemon sees at the same path: with a mounted docker socket (docker-outside-of-docker,
 # common on Jenkins), keep the workspace on a volume mounted at the same path on the host.
 set -eu
@@ -57,6 +60,7 @@ fi
 
 set +e
 [ "${OTRUST_ATTACH:-}" = true ] && set -- "$@" --attach
+set -- "$@" --scanners "${OTRUST_SCANNERS:-docker}"
 "$bin" assess "$@" --image "$OTRUST_IMAGE" ${OTRUST_SUBJECT:+--name "$OTRUST_SUBJECT"} --source "$OTRUST_SOURCE" --out "$OTRUST_OUT"
 code=$?
 set -e

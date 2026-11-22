@@ -64,7 +64,7 @@ jobs:
           done
           echo "${body:-all scanner pins current}"
           [ -n "$body" ] || exit 0
-          body+=$'\nTo update: put the version and multi-arch index digest in profiles/supply-chain-baseline/v1/tools.json, '
+          body+=$'\nTo update: put the version, the multi-arch index digest and (Syft, Trivy) the release archive sha256 per platform from the release checksums in profiles/supply-chain-baseline/v1/tools.json, '
           body+=$'review the release notes for in-tree configuration the scanner now honours (profile.md §9), '
           body+=$'regenerate the fixtures, and release a new otrust (the pins are embedded).'
           title="Scanner updates available"

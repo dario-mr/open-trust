@@ -181,6 +181,7 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Exceptions, "exceptions", "", "exceptions file (default: <source>/.otrust/exceptions.yaml)")
 	fs.StringVar(&o.Provenance, "provenance", "", "signed SLSA provenance bundle for the image (e.g. from actions/attest-build-provenance)")
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json to check --provenance (default: fetch via TUF)")
+	scanners := fs.String("scanners", "docker", "docker (pinned images), or local: no docker; Syft and Trivy from their pinned release archives, Semgrep from PATH at the pinned version")
 	fs.BoolVar(&o.Attach, "attach", false, "attach the signed certificate to the registry image (OCI referrer), so buyers verify by image reference alone")
 	noSign := fs.Bool("no-sign", false, "write an unsigned statement only (local testing)")
 	keyPath := fs.String("key", "", "sign with an ECDSA P-256 key (trust level L1): a key file (see `otrust keygen`) or a KMS key URI (awskms://, gcpkms://, azurekms://, hashivault://)")
@@ -192,6 +193,14 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 	if o.Image == "" {
 		fmt.Fprintln(stderr, "--image is required")
+		return 2
+	}
+	switch *scanners {
+	case "docker":
+	case "local":
+		o.LocalScanners = true
+	default:
+		fmt.Fprintln(stderr, "--scanners must be docker or local")
 		return 2
 	}
 	// an explicit choice: never emit an unsigned statement by accident
@@ -285,6 +294,7 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.BoolVar(&o.Online, "online", false, "fetch the signed Open Trust revocation list and, without --trusted-root, Sigstore's trusted root")
 	fs.StringVar(&o.Previous, "previous", "", "an earlier certificate for the same product: lists what changed (checked against the same trust policy)")
 	report := fs.String("report", "", "also write the report as Markdown to this file, to pass on")
+	scanners := fs.String("scanners", "docker", "for --recheck: docker (pinned images), or local: Syft and Trivy from their pinned release archives, no docker")
 	fs.BoolVar(&o.Recheck, "recheck", false, "re-run the image scanners yourself (needs docker; downloads the vulnerability DB) and compare with the certificate")
 	// flags may follow the positional certificate path
 	var pos []string
@@ -296,6 +306,14 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 			break
 		}
 		pos, args = append(pos, fs.Arg(0)), fs.Args()[1:]
+	}
+	switch *scanners {
+	case "docker":
+	case "local":
+		o.LocalScanners = true
+	default:
+		fmt.Fprintln(stderr, "--scanners must be docker or local")
+		return 2
 	}
 	if len(pos) > 1 || o.Image == "" || (len(pos) == 0 && !subject.IsRef(o.Image)) {
 		fmt.Fprintln(stderr, "usage: otrust verify [<certificate.sigstore.json>] --image <oci-layout | name@sha256:…> --trust-policy <trust.yaml> [flags]\n  (without a certificate file, --image must be a registry image with the certificate attached)")

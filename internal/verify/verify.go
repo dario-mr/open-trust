@@ -65,9 +65,11 @@ type Options struct {
 	TrustedRoot string // Sigstore trusted_root.json; for certificate-signed bundles (or Online fetches it)
 	Revocations string // optional: your own revocations.json, or a downloaded signed list
 	Online      bool   // fetch the signed Open Trust revocation list (RevocationsURL)
-	Recheck     bool   // re-run the image scanners (needs docker) and compare with the certificate
-	Previous    string // optional: an earlier certificate for the same product, to list what changed
-	Now         time.Time
+	Recheck     bool   // re-run the image scanners and compare with the certificate
+	// LocalScanners runs the re-check's Syft and Trivy from their pinned release archives: no docker.
+	LocalScanners bool
+	Previous      string // optional: an earlier certificate for the same product, to list what changed
+	Now           time.Time
 }
 
 type Report struct {
@@ -243,7 +245,7 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 
 	// 8. re-check (optional): the buyer's own scan of the image, today
 	if o.Recheck {
-		fresh, err := scanImage(ctx, layoutPath, img)
+		fresh, err := scanImage(ctx, layoutPath, img, o.LocalScanners)
 		if err != nil {
 			return nil, fmt.Errorf("re-check: %w", err)
 		}

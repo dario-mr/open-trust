@@ -79,6 +79,7 @@ type Params struct {
 	Evidence       map[string]string // check id → sha256 hex of its evidence file
 	ProvenanceHash string            // sha256 hex of the provenance attestation used, if any
 	ContextDigest  string            // sha256 hex of ContextFile
+	Limitations    []string          // beyond the profile's and the trust level's, e.g. how the tools ran
 }
 
 // limitations every certificate carries (profile.md §2); trust-level specific ones are appended.
@@ -107,6 +108,8 @@ func Build(p Params) *Statement {
 	case "L1+ci-identity":
 		lim = append(lim, "The vendor's own CI pipeline ran and signed the assessment; it was not an isolated assessor")
 	}
+
+	lim = append(lim, p.Limitations...)
 
 	levels := []string{scb.VSALevel}
 	if d.Result != "PASSED" {

@@ -41,6 +41,8 @@ Container images are pinned by multi-arch index digest. Use the native platform 
 | sast | Semgrep CE | 1.183.0 | `semgrep/semgrep@sha256:2e45517a85e13a9cca14a2a00df6bb48affd66b8ebfae1b0991cd57578362fb0` |
 | policy | OPA | 1.22.0 | `openpolicyagent/opa@sha256:895872de1e8dc5b82e04f9410d2d1ada2f72d28fdcdba0e8789d91cfc27ec0d0` |
 
+**Without docker** (`--scanners local`), Syft and Trivy run from their own release archives, pinned by sha256 per platform in `tools.json` (`release`), and Semgrep, which ships as a Python package rather than a binary, from the host's PATH at exactly the pinned version. The certificate records how each tool ran (`runner`), and adds a limitation that Semgrep was version-checked but not digest-pinned. Docker and local runs gave identical findings on otrust (Go) and the Java demo; only SAST paths differ (`/src/…` and `src/…`).
+
 The reference invocations are in [`fixtures/generate.sh`](fixtures/generate.sh):
 
 | Check | Command | Scans |

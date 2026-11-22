@@ -8,6 +8,8 @@
 //
 // The agent needs docker (the scanners run in pinned containers) and curl. With a mounted docker socket
 // (docker-outside-of-docker), the workspace must be at the same path for the agent and the docker host.
+// On agents without docker (Kubernetes pods), set OTRUST_SCANNERS = 'local' in environment and put
+// semgrep on PATH at the pinned version (`pipx install semgrep==1.183.0`).
 pipeline {
     agent any
     environment {

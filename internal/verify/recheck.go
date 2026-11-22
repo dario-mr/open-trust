@@ -39,10 +39,16 @@ type Recheck struct {
 const reratingGrace = 30 * 24 * time.Hour
 
 // scanImage runs the pinned image scanners; tests replace it to stay hermetic.
-var scanImage = func(ctx context.Context, layout string, s *subject.Subject) (*adapters.Evidence, error) {
+var scanImage = func(ctx context.Context, layout string, s *subject.Subject, local bool) (*adapters.Evidence, error) {
 	tools, err := scb.LoadTools()
 	if err != nil {
 		return nil, err
+	}
+	var l *adapters.Local
+	if local { // the re-check needs no source, so no Semgrep: every tool is pinned by digest
+		if l, err = adapters.PrepareLocal(ctx, tools, false); err != nil {
+			return nil, err
+		}
 	}
 	work, err := dockerVisibleTemp("", "otrust-recheck-")
 	if err != nil {
@@ -53,7 +59,7 @@ var scanImage = func(ctx context.Context, layout string, s *subject.Subject) (*a
 	if err != nil {
 		return nil, err
 	}
-	r := &adapters.Runner{Tools: tools, SourceDir: work, WorkDir: work, Subject: abs, CacheVol: "otrust-cache"}
+	r := &adapters.Runner{Tools: tools, SourceDir: work, WorkDir: work, Subject: abs, CacheVol: "otrust-cache", Local: l}
 	return r.ScanImage(ctx, s.SyftSource())
 }
 

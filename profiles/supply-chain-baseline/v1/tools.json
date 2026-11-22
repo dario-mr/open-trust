@@ -1,11 +1,47 @@
 {
   "syft": {
     "version": "1.56.0",
-    "image": "anchore/syft@sha256:697ae864af1299cfa43c54b161cea3dd65c6d54de82e3dba66ea3dccb3acc313"
+    "image": "anchore/syft@sha256:697ae864af1299cfa43c54b161cea3dd65c6d54de82e3dba66ea3dccb3acc313",
+    "release": {
+      "linux/amd64": {
+        "url": "https://github.com/anchore/syft/releases/download/v1.56.0/syft_1.56.0_linux_amd64.tar.gz",
+        "sha256": "1c2493cfcf52d3367d6cb25780d9190c111c2219c34c820574c43e8bae15c528"
+      },
+      "linux/arm64": {
+        "url": "https://github.com/anchore/syft/releases/download/v1.56.0/syft_1.56.0_linux_arm64.tar.gz",
+        "sha256": "ace61b9397ae28189c674ae332d67a8074dafd71e87724dfb8b22412d8253bb5"
+      },
+      "darwin/amd64": {
+        "url": "https://github.com/anchore/syft/releases/download/v1.56.0/syft_1.56.0_darwin_amd64.tar.gz",
+        "sha256": "ff37fb20e8d072e193cb659ecb932994ba2add772cbf86909c368fb95a630c50"
+      },
+      "darwin/arm64": {
+        "url": "https://github.com/anchore/syft/releases/download/v1.56.0/syft_1.56.0_darwin_arm64.tar.gz",
+        "sha256": "c19b97a8c175ac7bd8105b8c8240ce740bf078333b12cc62ea49002c1b33e6e0"
+      }
+    }
   },
   "trivy": {
     "version": "0.76.1",
-    "image": "aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c"
+    "image": "aquasec/trivy@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c",
+    "release": {
+      "linux/amd64": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz",
+        "sha256": "c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0"
+      },
+      "linux/arm64": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-ARM64.tar.gz",
+        "sha256": "e174dff2a6dba5e3ae41f8d0537a6324405bd08132497340304c6b20e0f16a1f"
+      },
+      "darwin/amd64": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_macOS-64bit.tar.gz",
+        "sha256": "7aa762eacd582052d053b62dcf972a1ab058abe39a57ccae234ed8894945b6b7"
+      },
+      "darwin/arm64": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_macOS-ARM64.tar.gz",
+        "sha256": "11a9b6cd2752011b54f01ea4bd0dbfa9f0c41dc6538d5a3f9d23955f471bf4e5"
+      }
+    }
   },
   "semgrep": {
     "version": "1.183.0",

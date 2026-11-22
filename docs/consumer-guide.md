@@ -46,7 +46,7 @@ Attaching adds no trust: the certificate is checked exactly as if you had receiv
 
 ### Re-check: don't take the vendor's word for the image
 
-`--recheck` runs the profile's pinned SBOM and vulnerability scanners yourself, on the image you received, with today's vulnerability database (about 20 seconds plus the database download). It works the same whatever CI the vendor used and whatever trust level the certificate has, because it needs no trust in the vendor's pipeline.
+`--recheck` runs the profile's pinned SBOM and vulnerability scanners yourself, on the image you received, with today's vulnerability database (about 20 seconds plus the database download). It uses Docker; without Docker, add `--scanners local` to run the same tools from their release archives, checked against the sha256 pinned in the profile. It works the same whatever CI the vendor used and whatever trust level the certificate has, because it needs no trust in the vendor's pipeline.
 
 - **A vulnerability that was public well before the vendor's scan but is missing from the certificate** gives `RECHECK_MISMATCH`. The vendor's scan should have found it. A vulnerability published less than 30 days before the vendor's scan counts as new instead, since severities are often re-rated in the first weeks.
 - **With `--evidence`**, it also compares the packages in the image with the vendor's SBOM. Any difference gives `RECHECK_MISMATCH`.

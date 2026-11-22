@@ -1,6 +1,8 @@
 package adapters
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -26,5 +28,36 @@ func TestSASTCoverage(t *testing.T) {
 	}
 	if got := SASTCoverage([]byte(`{}`), rules); len(got) != 0 {
 		t.Fatalf("no scanned paths: %+v", got)
+	}
+}
+
+// The local SAST tree links the vendor's files, blanks .semgrepignore without touching the
+// vendor's copy, and leaves excluded paths (the evidence dir) out.
+func TestLocalSASTDirLeavesVendorTreeAlone(t *testing.T) {
+	src, work := t.TempDir(), t.TempDir()
+	os.MkdirAll(filepath.Join(src, "app"), 0o755)
+	os.WriteFile(filepath.Join(src, "app", "main.go"), []byte("package main\n"), 0o644)
+	os.WriteFile(filepath.Join(src, "app", ".semgrepignore"), []byte("*\n"), 0o644)
+	os.MkdirAll(filepath.Join(src, "otrust-out"), 0o755)
+	os.WriteFile(filepath.Join(src, "otrust-out", "sast.json"), []byte("{}"), 0o644)
+	r := &Runner{SourceDir: src, WorkDir: work, Exclude: []string{"otrust-out"}}
+	dir, err := r.localSASTDir([]byte("rules: []"), []string{"app/.semgrepignore"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(src, "app", ".semgrepignore")); string(b) != "*\n" {
+		t.Fatalf("the vendor's .semgrepignore was changed: %q", b)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "src", "app", ".semgrepignore")); err != nil || len(b) != 0 {
+		t.Fatalf("not blanked in the scan tree: %q, %v", b, err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "src", "app", "main.go")); string(b) != "package main\n" {
+		t.Fatalf("main.go: %q", b)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "src", "otrust-out")); err == nil {
+		t.Fatal("excluded path was copied")
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, localRules)); string(b) != "rules: []" {
+		t.Fatal("rules file missing")
 	}
 }
