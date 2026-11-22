@@ -8,7 +8,7 @@
 set -uo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-VERSION=${VERSION:-v0.1.15}
+VERSION=${VERSION:-v0.1.16}
 DEMO=dario-mr/open-trust-demo
 work=${WORK:-$HOME/.cache/otrust-demo}
 rm -rf "$work" && mkdir -p "$work" && cd "$work" || exit 2
