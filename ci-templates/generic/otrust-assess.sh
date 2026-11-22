@@ -22,7 +22,7 @@
 #   OTRUST_FAIL_ON_FAILED  "true" (default) fails the job when the assessment FAILED
 #   OTRUST_SCANNERS  "docker" (default), or "local" for agents without docker (e.g. Kubernetes pods):
 #                    Syft and Trivy come from their pinned release archives, and Semgrep must be on PATH
-#                    at the pinned version (`pipx install semgrep==1.183.0`; otrust v0.1.14+)
+#                    at the pinned version (`pipx install semgrep==1.183.0`; otrust v0.1.15+)
 #   OTRUST_ATTACH    "true" attaches the certificate to OTRUST_IMAGE in its registry (needs a registry
 #                    reference and push access; otrust v0.1.13+), so buyers verify by reference alone
 #
