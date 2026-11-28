@@ -35,7 +35,8 @@ docker run -d --name otrust-jenkins -u root -p 127.0.0.1:18080:8080 \
 	-v "$work/vendor.key:/run/otrust/vendor.key:ro" \
 	-e JAVA_OPTS="-Djenkins.install.runSetupWizard=false -Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=true" \
 	otrust-jenkins >/dev/null || exit 2
-[ -n "${KEEP:-}" ] || trap 'docker rm -f otrust-jenkins >/dev/null 2>&1' EXIT
+# the Jenkinsfile's buildx builder runs on the host daemon too, unseen by the host's buildx
+[ -n "${KEEP:-}" ] || trap 'docker rm -f otrust-jenkins buildx_buildkit_otrust-oci0 >/dev/null 2>&1' EXIT
 for i in $(seq 90); do curl -fs "$url/job/open-trust-demo/api/json" >/dev/null && break; sleep 2; done
 curl -fs "$url/job/open-trust-demo/api/json" >/dev/null || { docker logs otrust-jenkins | tail -30; exit 2; }
 
