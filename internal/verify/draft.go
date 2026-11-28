@@ -61,12 +61,24 @@ signers:
 	if v := st.Predicate.Verifier.Version["otrust"]; v != "" {
 		fmt.Fprintf(&w, "minAgentVersion: %s  # refuse certificates from older assessors\n", v)
 	}
+	signer, release := "^"+regexp.QuoteMeta(c.BuildSignerURI)+"$", false
+	if o.AnyRelease {
+		signer, release = anyRelease(c.BuildSignerURI)
+	}
 	fmt.Fprintf(&w, "signers:\n  - name: %s\n", yq(c.SourceRepositoryURI+" via "+c.BuildSignerURI))
 	fmt.Fprintf(&w, "    issuer: %s  # who vouches for the CI identity\n", yq(c.Issuer))
 	fmt.Fprintf(&w, "    sourceRepo: %s\n", yq(c.SourceRepositoryURI))
-	fmt.Fprintf(&w, "    sourceRef: %s  # only builds of this branch or tag\n", yq(c.SourceRepositoryRef))
-	fmt.Fprintf(&w, "    # pinned to this exact workflow and revision; when the vendor upgrades, update the pin\n")
-	fmt.Fprintf(&w, "    buildSigner: %s\n", yq("^"+regexp.QuoteMeta(c.BuildSignerURI)+"$"))
+	if release && strings.HasPrefix(c.SourceRepositoryRef, "refs/tags/") {
+		fmt.Fprintf(&w, "    # no sourceRef: each release builds from its own tag; buildSigner admits release tags only\n")
+	} else {
+		fmt.Fprintf(&w, "    sourceRef: %s  # only builds of this branch or tag\n", yq(c.SourceRepositoryRef))
+	}
+	if release {
+		fmt.Fprintf(&w, "    # this workflow at any commit pin or release tag (not a branch); minAgentVersion is the floor\n")
+	} else {
+		fmt.Fprintf(&w, "    # pinned to this exact workflow and revision; when the vendor upgrades, update the pin\n")
+	}
+	fmt.Fprintf(&w, "    buildSigner: %s\n", yq(signer))
 	if hosted {
 		fmt.Fprintf(&w, "    requireHostedRunner: true  # refuse runs on machines the vendor controls\n")
 	} else {
@@ -96,6 +108,20 @@ signers:
 		return "", fmt.Errorf("drafted policy refuses its own certificate: %s: %s", r.Code, r.Reason)
 	}
 	return draft, nil
+}
+
+// releasePin matches what a release pins a workflow to: a full commit, or a release tag v<digits.dots>
+// (a look-alike such as v1.0-evil is not one)
+const releasePin = `([0-9a-f]{40}|refs/tags/v[0-9.]+)`
+
+// anyRelease generalises a build signer URI pinned to a commit or release tag to any commit or release
+// tag of the same workflow. A branch ref is left as it is: it already spans releases.
+func anyRelease(uri string) (signer string, release bool) {
+	i := strings.LastIndex(uri, "@")
+	if i < 0 || !regexp.MustCompile("^"+releasePin+"$").MatchString(uri[i+1:]) {
+		return "^" + regexp.QuoteMeta(uri) + "$", false
+	}
+	return "^" + regexp.QuoteMeta(uri[:i+1]) + releasePin + "$", true
 }
 
 func trustMeaning(level string) string {

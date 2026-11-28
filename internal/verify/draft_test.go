@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -56,4 +57,25 @@ func mustRead(t *testing.T, p string) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+func TestAnyRelease(t *testing.T) {
+	const wf = "https://github.com/acme/ot/.github/workflows/assess.yml@"
+	for ref, want := range map[string]bool{"0947758" + strings.Repeat("a", 33): true, "refs/tags/v0.1.18": true, "refs/heads/main": false, "refs/tags/v1-evil": false} {
+		re, release := anyRelease(wf + ref)
+		if release != want {
+			t.Errorf("%s: release %v", ref, release)
+		}
+		r := regexp.MustCompile(re)
+		if !r.MatchString(wf+ref) || r.MatchString(wf+"refs/heads/evil") || r.MatchString("https://github.com/evil/ot/.github/workflows/assess.yml@refs/tags/v1") {
+			t.Errorf("%s: %s", ref, re)
+		}
+		if release && !r.MatchString(wf+"refs/tags/v9.9.9") {
+			t.Errorf("%s: a later release is refused: %s", ref, re)
+		}
+	}
+	d, err := DraftPolicy(Options{Bundle: realCert, TrustedRoot: realRoot, AnyRelease: true})
+	if err != nil || !strings.Contains(d, `assess\.yml@([0-9a-f]{40}|refs/tags/v[0-9.]+)$`) || !strings.Contains(d, "sourceRef: 'refs/heads/main'") {
+		t.Fatalf("%v\n%s", err, d)
+	}
 }

@@ -116,6 +116,7 @@ func cmdPolicy(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (offline)")
 	fs.BoolVar(&o.Online, "online", false, "fetch Sigstore's trusted root")
 	profile := fs.String("profile", profiles.SupplyChain.ID, "with --image: which attached certificate ("+profileIDs()+")")
+	fs.BoolVar(&o.AnyRelease, "any-release", false, "accept any commit pin or release tag of the signing workflow, from this certificate's assessor version on (default: this exact one)")
 	var pos []string
 	for len(args) > 0 {
 		if err := fs.Parse(args); err != nil {

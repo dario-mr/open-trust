@@ -62,6 +62,8 @@ The re-check covers only the image checks. Secrets and static analysis need the 
 otrust policy --image ghcr.io/acme/svc@sha256:… --online > trust.yaml     # or: otrust policy certificate.sigstore.json --online
 ```
 
+The draft pins the exact assessor revision, so it refuses the vendor's next release until you update it. `--any-release` accepts any commit pin or release tag of the same signing workflow instead (never a branch, never a look-alike tag), with this certificate's assessor version as the floor (`minAgentVersion`).
+
 For a key-signed certificate the draft names `vendor.pub`: get the vendor's public key through a channel you trust, not with the certificate.
 
 A sample `trust.yaml` that accepts only the Open Trust assessor at a pinned version, assessing one vendor repository on a GitHub-hosted runner:

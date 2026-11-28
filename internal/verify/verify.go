@@ -67,6 +67,7 @@ type Options struct {
 	Revocations string // optional: your own revocations.json, or a downloaded signed list
 	Online      bool   // fetch the signed Open Trust revocation list (RevocationsURL)
 	Recheck     bool   // re-run the image scanners and compare with the certificate
+	AnyRelease  bool   // DraftPolicy: accept any commit pin or release tag of the signing workflow
 	// LocalScanners runs the re-check's Syft and Trivy from their pinned release archives: no docker.
 	LocalScanners bool
 	Previous      string // optional: an earlier certificate for the same product, to list what changed
