@@ -112,4 +112,5 @@ demo/jenkins/run.sh >demo/jenkins/RESULTS.txt 2>&1 || { tail -5 demo/jenkins/RES
 tail -1 demo/RESULTS.txt demo/jenkins/RESULTS.txt
 git commit -qam "Record the v$new demo runs"
 git push -q origin main
+docker buildx rm otrust-oci >/dev/null 2>&1 || true # the builder the demo scripts create
 say "Released v$new"
