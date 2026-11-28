@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Profile ID | `supply-chain-baseline` |
-| Version | `1.2.0` (draft). `otrust verify` knows only the current policy: a certificate issued under an earlier version gives `POLICY_UNKNOWN` (the project has no users yet, so it keeps no compatibility). 1.1.0 added the SAST coverage warning (§5), 1.2.0 per-file SAST exceptions (§6). |
+| Version | `1.3.0` (draft). `otrust verify` knows only the current policy: a certificate issued under an earlier version gives `POLICY_UNKNOWN` (the project has no users yet, so it keeps no compatibility). 1.1.0 added the SAST coverage warning (§5), 1.2.0 per-file SAST exceptions (§6), 1.3.0 ignores exceptions for other profiles' checks ([Quality Baseline](../../quality-baseline/v1/profile.md) shares the exceptions file). |
 | VSA level | `OPENTRUST_SCB_V1` |
 | Policy | [`policy.rego`](policy.rego), package `otrust.scb.v1`, result at `data.otrust.scb.v1.decision`. The certificate records its SHA-256. |
 | Conformance | [`fixtures/`](fixtures/), with expected results in [fixtures/README.md](fixtures/README.md). Run with `./test.sh`. |

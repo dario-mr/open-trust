@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/dario-mr/open-trust/profiles"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -57,11 +58,11 @@ func TestE2EClean(t *testing.T) {
 	e2e(t)
 	out := outDir(t, "clean")
 	r := assessFixture(t, "clean", out, "")
-	if r.Decision.Result != "PASSED" {
-		t.Fatalf("clean: %s %v", r.Decision.Result, r.Decision.UnmetRequirements)
+	if r.Of(profiles.SupplyChain).Decision.Result != "PASSED" {
+		t.Fatalf("clean: %s %v", r.Of(profiles.SupplyChain).Decision.Result, r.Of(profiles.SupplyChain).Decision.UnmetRequirements)
 	}
 	// every evidence digest in the statement must match the file written next to it
-	ext := r.Statement.Predicate[statement.ExtensionKey].(statement.Extension)
+	ext := r.Of(profiles.SupplyChain).Statement.Predicate[statement.ExtensionKey].(statement.Extension)
 	files := map[string]string{"sbom": "sbom.cdx.json", "vulns": "vulns.json", "secrets": "secrets.json", "sast": "sast.json", "provenance": "provenance.json"}
 	for _, c := range ext.Checks {
 		f, ok := files[c.ID]
@@ -82,8 +83,8 @@ func TestE2EClean(t *testing.T) {
 func TestE2EVulnerableFailsThenPassesWithExceptions(t *testing.T) {
 	e2e(t)
 	r := assessFixture(t, "vulnerable", outDir(t, "vulnerable"), "")
-	if r.Decision.Result != "FAILED" || len(r.Decision.UnmetRequirements) != 5 {
-		t.Fatalf("vulnerable: %s %v", r.Decision.Result, r.Decision.UnmetRequirements)
+	if r.Of(profiles.SupplyChain).Decision.Result != "FAILED" || len(r.Of(profiles.SupplyChain).Decision.UnmetRequirements) != 5 {
+		t.Fatalf("vulnerable: %s %v", r.Of(profiles.SupplyChain).Decision.Result, r.Of(profiles.SupplyChain).Decision.UnmetRequirements)
 	}
 
 	exc := filepath.Join(outDir(t, "exc"), "exceptions.yaml")
@@ -96,8 +97,8 @@ func TestE2EVulnerableFailsThenPassesWithExceptions(t *testing.T) {
 - {check: sast, id: java.lang.security.audit.formatted-sql-string.formatted-sql-string, path: Main.java, reason: fixture, expires: "2099-01-01T00:00:00Z"}
 `), 0o644)
 	r = assessFixture(t, "vulnerable", outDir(t, "vulnerable-exc"), exc)
-	if r.Decision.Result != "PASSED" || len(r.Decision.ExceptionsApplied) != 5 {
-		t.Fatalf("with exceptions: %s, applied %d, unmet %v", r.Decision.Result, len(r.Decision.ExceptionsApplied), r.Decision.UnmetRequirements)
+	if r.Of(profiles.SupplyChain).Decision.Result != "PASSED" || len(r.Of(profiles.SupplyChain).Decision.ExceptionsApplied) != 5 {
+		t.Fatalf("with exceptions: %s, applied %d, unmet %v", r.Of(profiles.SupplyChain).Decision.Result, len(r.Of(profiles.SupplyChain).Decision.ExceptionsApplied), r.Of(profiles.SupplyChain).Decision.UnmetRequirements)
 	}
 }
 
@@ -119,7 +120,7 @@ func TestE2EOutDirInsideSourceIsExcluded(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, c := range r.Decision.Checks {
+		for _, c := range r.Of(profiles.SupplyChain).Decision.Checks {
 			if c.ID == "secrets" && len(c.Findings) != 1 {
 				t.Fatalf("run %d: secrets findings = %v (evidence dir was scanned?)", i+1, c.Findings)
 			}
@@ -151,12 +152,12 @@ func TestE2EVendorSemgrepignoreIsNeutralized(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, c := range r.Decision.Checks {
+	for _, c := range r.Of(profiles.SupplyChain).Decision.Checks {
 		if c.ID == "sast" && c.Result != "FAILED" {
 			t.Fatalf("sast = %s %v: the vendor's .semgrepignore hid the SQL injection", c.Result, c.Findings)
 		}
 	}
-	ext := r.Statement.Predicate[statement.ExtensionKey].(statement.Extension)
+	ext := r.Of(profiles.SupplyChain).Statement.Predicate[statement.ExtensionKey].(statement.Extension)
 	got := ext.Tools["semgrep"].(map[string]any)["neutralizedIgnoreFiles"].([]string)
 	if len(got) != 2 {
 		t.Fatalf("neutralized ignore files = %v, want both recorded", got)
@@ -204,10 +205,10 @@ func TestE2ERegistryReference(t *testing.T) {
 		t.Fatal(err)
 	}
 	fromTar := assessFixture(t, "clean", outDir(t, "registry-tar"), "")
-	if r.Subject.Digest != fromTar.Subject.Digest || r.Decision.Result != "PASSED" {
-		t.Fatalf("registry: %s %s; tar: %s", r.Subject.Digest, r.Decision.Result, fromTar.Subject.Digest)
+	if r.Subject.Digest != fromTar.Subject.Digest || r.Of(profiles.SupplyChain).Decision.Result != "PASSED" {
+		t.Fatalf("registry: %s %s; tar: %s", r.Subject.Digest, r.Of(profiles.SupplyChain).Decision.Result, fromTar.Subject.Digest)
 	}
-	if got := r.Statement.Subject[0].Name; got != repo {
+	if got := r.Of(profiles.SupplyChain).Statement.Subject[0].Name; got != repo {
 		t.Fatalf("subject name = %q, want the repository %q", got, repo)
 	}
 	if _, err := os.Stat(filepath.Join(out, ".otrust-image")); !os.IsNotExist(err) {

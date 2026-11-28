@@ -2,7 +2,7 @@
 
 **This exact artifact was assessed using this exact methodology. These checks produced these results. The evidence is intact. These are the trust assumptions.** All of it is verifiable offline by a customer who never sees the vendor's source.
 
-`otrust` runs in the vendor's CI. It scans an OCI image and its source with pinned tools (Syft, Trivy, Semgrep), evaluates a versioned policy ([Supply-Chain Baseline v1](profiles/supply-chain-baseline/v1/profile.md)), and signs the result as a Sigstore bundle. The bundle carries an in-toto statement with a SLSA VSA predicate. The evidence stays with the vendor; the certificate holds only its digests.
+`otrust` runs in the vendor's CI. It scans an OCI image and its source with pinned tools (Syft, Trivy, Semgrep) and evaluates two versioned profiles on that one scan: [Supply-Chain Baseline v1](profiles/supply-chain-baseline/v1/profile.md) (vulnerabilities, secrets, static analysis, provenance) and [Quality Baseline v1](profiles/quality-baseline/v1/profile.md) (licences, SBOM completeness, OS support). It signs one certificate per profile as a Sigstore bundle. The bundle carries an in-toto statement with a SLSA VSA predicate. The evidence stays with the vendor; the certificate holds only its digests.
 
 > **Buyers:** start with the [consumer guide](docs/consumer-guide.md). The POC result is in [research/g1-go-no-go.md](research/g1-go-no-go.md), and a recorded buyer-side demo is in [demo/RESULTS.txt](demo/RESULTS.txt).
 

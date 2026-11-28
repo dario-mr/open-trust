@@ -25,7 +25,7 @@ jobs:
       - name: Unit and tamper tests
         run: go test ./...
       - name: Policy tests (opa)
-        run: profiles/supply-chain-baseline/v1/test.sh
+        run: profiles/supply-chain-baseline/v1/test.sh && profiles/quality-baseline/v1/test.sh
       # the default docker driver cannot attach BuildKit provenance; fixtures need it
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: End-to-end (real scanners, sign, verify)

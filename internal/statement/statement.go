@@ -9,7 +9,7 @@ import (
 
 	"github.com/dario-mr/open-trust/internal/ci"
 	"github.com/dario-mr/open-trust/internal/policy"
-	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
+	"github.com/dario-mr/open-trust/profiles"
 )
 
 const (
@@ -46,6 +46,7 @@ type Check struct {
 var EvidenceFiles = map[string]string{
 	"sbom": "sbom.cdx.json", "vulns": "vulns.json", "secrets": "secrets.json",
 	"sast": "sast.json", "provenance": "provenance.json",
+	"licenses": "sbom.cdx.json", "sbom_completeness": "sbom.cdx.json", "os_support": "vulns.json",
 }
 
 // ContextFile holds the non-scanner policy input (time, subject, provenance status, exceptions);
@@ -75,6 +76,7 @@ type Params struct {
 	CI             ci.Env
 	TrustLevel     string
 	Tools          map[string]any
+	Profile        *profiles.Profile
 	Decision       *policy.Decision
 	Evidence       map[string]string // check id → sha256 hex of its evidence file
 	ProvenanceHash string            // sha256 hex of the provenance attestation used, if any
@@ -84,8 +86,6 @@ type Params struct {
 
 // limitations every certificate carries (profile.md §2); trust-level specific ones are appended.
 var baseLimitations = []string{
-	"Scanners detect known vulnerabilities and pattern-matched code flaws only",
-	"Does not prove the scanned source is the complete source of the artifact",
 	"Vendor-attested (Level 1): the vendor controls the environment the assessment ran in",
 }
 
@@ -99,7 +99,7 @@ func Build(p Params) *Statement {
 		}
 		checks = append(checks, ck)
 	}
-	lim := append([]string{}, baseLimitations...)
+	lim := append(append([]string{}, p.Profile.Limitations...), baseLimitations...)
 	switch p.TrustLevel {
 	case "unsigned":
 		lim = append(lim, "Unsigned: origin and integrity of this statement cannot be verified")
@@ -111,7 +111,7 @@ func Build(p Params) *Statement {
 
 	lim = append(lim, p.Limitations...)
 
-	levels := []string{scb.VSALevel}
+	levels := []string{p.Profile.VSALevel}
 	if d.Result != "PASSED" {
 		levels = []string{"FAILED"}
 	}
@@ -129,7 +129,7 @@ func Build(p Params) *Statement {
 		"resourceUri":  p.SubjectName,
 		"policy": map[string]any{
 			"uri":    "https://open-trust.dev/profiles/" + d.Profile.ID + "/" + d.Profile.Version,
-			"digest": Digest{"sha256": scb.PolicyDigest()},
+			"digest": Digest{"sha256": p.Profile.Digest()},
 		},
 		"verificationResult": d.Result,
 		"verifiedLevels":     levels,

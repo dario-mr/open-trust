@@ -13,6 +13,7 @@ import (
 	"github.com/dario-mr/open-trust/internal/adapters"
 	"github.com/dario-mr/open-trust/internal/policy"
 	"github.com/dario-mr/open-trust/internal/subject"
+	"github.com/dario-mr/open-trust/profiles"
 	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
 
@@ -89,7 +90,7 @@ func compareRecheck(ctx context.Context, p *Predicate, subjectDigest string, fre
 	if in.Exceptions == nil {
 		in.Exceptions = []policy.Exception{}
 	}
-	dec, err := policy.Evaluate(ctx, in)
+	dec, err := policy.Evaluate(ctx, profiles.SupplyChain, in)
 	if err != nil {
 		return nil, err
 	}

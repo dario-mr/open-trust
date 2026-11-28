@@ -6,6 +6,8 @@ A vendor sends you software and an **Open Trust certificate** for it. This page 
 
 *This exact artifact (by digest) was assessed with this exact profile and these pinned tools. These were the results, and these risks were accepted. Here is how far you can trust that the assessment really ran as stated.*
 
+Each image gets one certificate per profile: **Supply-Chain Baseline** (`certificate.sigstore.json`) answers *is it safe to run?*, and **Quality Baseline** (`certificate.quality-baseline.sigstore.json`) answers *can we legally and sustainably run it?*: no strong-copyleft application dependencies, a complete SBOM, an OS release that still gets security fixes ([profile](../profiles/quality-baseline/v1/profile.md)). Verify each one; with `--image` alone, `--profile quality-baseline` picks the quality certificate attached to the image. `--recheck` covers Supply-Chain Baseline.
+
 It does **not** say the software is secure. The scanners find *known* vulnerabilities, leaked secrets and *pattern-matched* code flaws, nothing more. The checks are listed in [Supply-Chain Baseline v1](../profiles/supply-chain-baseline/v1/profile.md): SBOM, vulnerabilities, secrets, static analysis, build provenance and artifact binding.
 
 ## Get otrust

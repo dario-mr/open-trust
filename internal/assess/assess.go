@@ -24,6 +24,7 @@ import (
 	"github.com/dario-mr/open-trust/internal/signer"
 	"github.com/dario-mr/open-trust/internal/statement"
 	"github.com/dario-mr/open-trust/internal/subject"
+	"github.com/dario-mr/open-trust/profiles"
 	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
 
@@ -50,17 +51,30 @@ type Options struct {
 	LocalScanners bool
 }
 
-// BundleFile is the signed certificate a vendor hands to customers (with the image).
-const BundleFile = "certificate.sigstore.json"
-
+// Result is one assessment: one scan, one certificate per profile (profiles.All, in that order).
 type Result struct {
+	Certificates []*Certificate
+	Subject      *subject.Subject
+	CI           ci.Env
+	OutDir       string
+}
+
+type Certificate struct {
+	Profile   *profiles.Profile
 	Statement *statement.Statement
 	Decision  *policy.Decision
-	Subject   *subject.Subject
-	CI        ci.Env
-	OutDir    string
 	Signed    bool
 	Attached  string // the certificate's referrer digest in the registry, when attached
+}
+
+// Of returns the certificate of one profile.
+func (r *Result) Of(p *profiles.Profile) *Certificate {
+	for _, c := range r.Certificates {
+		if c.Profile == p {
+			return c
+		}
+	}
+	return nil
 }
 
 func Run(ctx context.Context, o Options) (*Result, error) {
@@ -168,10 +182,6 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 	if err := os.WriteFile(filepath.Join(out, statement.ContextFile), ctxJSON, 0o644); err != nil {
 		return nil, err
 	}
-	dec, err := policy.Evaluate(ctx, pctx.Input(policy.EvidenceIn{SBOM: ev.SBOM, Vulns: ev.Vulns, Secrets: ev.Secrets, SAST: ev.SAST}))
-	if err != nil {
-		return nil, err
-	}
 	trust := "unsigned"
 	if o.Signer != nil {
 		// keyless: fetch the short-lived token and certificate only now, after the scans
@@ -182,39 +192,49 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 		}
 		trust = o.Signer.TrustLevel()
 	}
-
 	agent, err := selfDigest()
 	if err != nil {
 		return nil, err
 	}
 	var trivyDB any
 	_ = json.Unmarshal(ev.TrivyDB, &trivyDB)
-	st := statement.Build(statement.Params{
-		SubjectName:    nameOr(name, img),
-		SubjectDigest:  subj.Digest,
-		AgentVersion:   Version,
-		AgentDigest:    agent,
-		Time:           now,
-		CI:             env,
-		TrustLevel:     trust,
-		Tools:          recordedTools(tools, trivyDB, ev, o.LocalScanners),
-		Limitations:    toolLimitations(o.LocalScanners, tools),
-		Decision:       dec,
-		Evidence:       evidenceDigests(digests),
-		ProvenanceHash: digests["provenance.json"],
-		ContextDigest:  sha256hex(ctxJSON),
-	})
-	stJSON, err := json.MarshalIndent(st, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(filepath.Join(out, "statement.json"), stJSON, 0o644); err != nil {
-		return nil, err
-	}
-	res := &Result{Statement: st, Decision: dec, Subject: subj, CI: env, OutDir: out}
-	bundlePath := filepath.Join(out, BundleFile)
-	os.Remove(bundlePath) // never leave a stale certificate next to new evidence
-	if o.Signer != nil {
+	res := &Result{Subject: subj, CI: env, OutDir: out}
+	in := pctx.Input(policy.EvidenceIn{SBOM: ev.SBOM, Vulns: ev.Vulns, Secrets: ev.Secrets, SAST: ev.SAST})
+	for _, prof := range profiles.All {
+		dec, err := policy.Evaluate(ctx, prof, in)
+		if err != nil {
+			return nil, err
+		}
+		st := statement.Build(statement.Params{
+			SubjectName:    nameOr(name, img),
+			SubjectDigest:  subj.Digest,
+			AgentVersion:   Version,
+			AgentDigest:    agent,
+			Time:           now,
+			CI:             env,
+			TrustLevel:     trust,
+			Tools:          recordedTools(tools, trivyDB, ev, o.LocalScanners),
+			Limitations:    toolLimitations(o.LocalScanners, tools),
+			Profile:        prof,
+			Decision:       dec,
+			Evidence:       evidenceDigests(digests),
+			ProvenanceHash: digests["provenance.json"],
+			ContextDigest:  sha256hex(ctxJSON),
+		})
+		stJSON, err := json.MarshalIndent(st, "", "  ")
+		if err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(filepath.Join(out, prof.Statement), stJSON, 0o644); err != nil {
+			return nil, err
+		}
+		c := &Certificate{Profile: prof, Statement: st, Decision: dec}
+		res.Certificates = append(res.Certificates, c)
+		bundlePath := filepath.Join(out, prof.Bundle)
+		os.Remove(bundlePath) // never leave a stale certificate next to new evidence
+		if o.Signer == nil {
+			continue
+		}
 		b, err := o.Signer.Sign(ctx, stJSON)
 		if err != nil {
 			return nil, fmt.Errorf("sign: %w", err)
@@ -222,10 +242,10 @@ func Run(ctx context.Context, o Options) (*Result, error) {
 		if err := os.WriteFile(bundlePath, b, 0o644); err != nil {
 			return nil, err
 		}
-		res.Signed = true
+		c.Signed = true
 		if o.Attach {
 			ann := map[string]string{"dev.open-trust.profile": dec.Profile.ID + "@" + dec.Profile.Version, "dev.open-trust.result": dec.Result}
-			if res.Attached, err = subject.Attach(ctx, o.Image, subj.Digest, b, ann); err != nil {
+			if c.Attached, err = subject.Attach(ctx, o.Image, subj.Digest, b, ann); err != nil {
 				return nil, err
 			}
 		}

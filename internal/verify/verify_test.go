@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/dario-mr/open-trust/profiles"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +17,6 @@ import (
 	"github.com/dario-mr/open-trust/internal/signer"
 	"github.com/dario-mr/open-trust/internal/statement"
 	"github.com/dario-mr/open-trust/internal/trustlevel"
-	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
 
 // Hermetic certificates: real Week 1 scanner evidence + a synthetic OCI image, signed in-process.
@@ -79,11 +79,11 @@ func newCert(t *testing.T, fixture string, mut func(p map[string]any, ext *state
 		Provenance: in.Provenance, Exceptions: []policy.Exception{}}
 	ctxJSON, _ := json.Marshal(pc)
 	os.WriteFile(filepath.Join(c.dir, statement.ContextFile), ctxJSON, 0o644)
-	dec, err := policy.Evaluate(ctx, pc.Input(in.Evidence))
+	dec, err := policy.Evaluate(ctx, profiles.SupplyChain, pc.Input(in.Evidence))
 	if err != nil {
 		t.Fatal(err)
 	}
-	st := statement.Build(statement.Params{SubjectName: "example.com/" + fixture, SubjectDigest: digest, AgentVersion: "test",
+	st := statement.Build(statement.Params{Profile: profiles.SupplyChain, SubjectName: "example.com/" + fixture, SubjectDigest: digest, AgentVersion: "test",
 		AgentDigest: "a9e17", Time: now, TrustLevel: trustlevel.L1, Decision: dec, Evidence: digests, ContextDigest: sha(ctxJSON)})
 	if mut != nil {
 		ext := st.Predicate[statement.ExtensionKey].(statement.Extension)
@@ -248,7 +248,7 @@ func TestEvidenceMismatchOnEditedFile(t *testing.T) {
 // The vendor signs honest evidence digests but a dishonest summary. Only re-evaluation catches it.
 func TestEvidenceMismatchOnLyingSummary(t *testing.T) {
 	c := newCert(t, "vulnerable", func(p map[string]any, ext *statement.Extension) {
-		p["verificationResult"], p["verifiedLevels"] = "PASSED", []string{scb.VSALevel}
+		p["verificationResult"], p["verifiedLevels"] = "PASSED", []string{profiles.SupplyChain.VSALevel}
 		for i := range ext.Checks {
 			ext.Checks[i].Result, ext.Checks[i].Findings = "PASSED", nil
 		}

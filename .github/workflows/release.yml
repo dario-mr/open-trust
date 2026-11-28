@@ -138,8 +138,10 @@ jobs:
         run: |
           set -euo pipefail
           cp out/certificate.sigstore.json otrust-image.certificate.sigstore.json
+          cp out/certificate.quality-baseline.sigstore.json otrust-image.certificate.quality-baseline.sigstore.json
           tar -czf otrust-image.evidence.tar.gz -C out .
-          gh release upload "$GITHUB_REF_NAME" otrust-image.certificate.sigstore.json otrust-image.evidence.tar.gz --repo "$GITHUB_REPOSITORY"
+          gh release upload "$GITHUB_REF_NAME" otrust-image.certificate.sigstore.json otrust-image.certificate.quality-baseline.sigstore.json \
+            otrust-image.evidence.tar.gz --repo "$GITHUB_REPOSITORY"
       - name: Attach the certificate to the image
         env:
           GH_TOKEN: ${{ github.token }}
@@ -152,4 +154,6 @@ jobs:
           sha256sum -c --ignore-missing SHA256SUMS
           chmod +x otrust-linux-amd64
           docker login ghcr.io -u "$ACTOR" --password-stdin <<<"$GH_TOKEN"
-          ./otrust-linux-amd64 attach otrust-image.certificate.sigstore.json --image "$IMAGE"
+          for c in otrust-image.certificate.sigstore.json otrust-image.certificate.quality-baseline.sigstore.json; do
+            ./otrust-linux-amd64 attach "$c" --image "$IMAGE"
+          done

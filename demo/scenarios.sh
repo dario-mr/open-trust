@@ -58,6 +58,8 @@ scenario "1e. No certificate file: verify by image reference alone (the certific
 	v --image "ghcr.io/$DEMO@$(subj gh/otrust-image-clean/certificate.sigstore.json)" --trust-policy trust.yaml
 scenario "1f. The same on GitLab's registry" VERIFIED \
 	v --image "registry.gitlab.com/$DEMO@$(subj gl/otrust-out/certificate.sigstore.json)" --trust-policy trust-gitlab.yaml
+scenario "1g. The Quality Baseline certificate of the same image: licences, SBOM completeness, OS support" VERIFIED \
+	v --image "ghcr.io/$DEMO@$(subj gh/otrust-image-clean/certificate.sigstore.json)" --trust-policy trust.yaml --profile quality-baseline
 sed 's/^minTrustLevel: .*/minTrustLevel: L1+isolated-assessor/' trust-gitlab.yaml > trust-gitlab-strict.yaml
 scenario "1c. A buyer who demands the isolated assessor rejects the GitLab certificate" TRUST_LEVEL_TOO_LOW \
 	v gl/otrust-out/certificate.sigstore.json --image gl/image-clean.oci.tar --trust-policy trust-gitlab-strict.yaml

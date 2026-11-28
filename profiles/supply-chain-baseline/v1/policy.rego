@@ -5,8 +5,9 @@ package otrust.scb.v1
 
 import rego.v1
 
-# 1.2.0: SAST exceptions name the file their finding is in.
-profile := {"id": "supply-chain-baseline", "version": "1.2.0"}
+# 1.2.0: SAST exceptions name the file their finding is in. 1.3.0: exceptions for other profiles'
+# checks are not this profile's (neither applied nor ignored).
+profile := {"id": "supply-chain-baseline", "version": "1.3.0"}
 
 required_checks := ["sbom", "vulns", "secrets", "sast", "provenance", "subject_binding"]
 
@@ -141,6 +142,8 @@ structural(msg) := {"key": msg, "level": "fail", "message": msg, "structural": t
 
 # ---------------------------------------------------------------- exceptions
 
+own_exceptions := [e | some e in object.get(input, "exceptions", []); e.check in required_checks]
+
 exception_valid(e) if {
 	e.check in exceptable
 	count(trim_space(object.get(e, "reason", ""))) > 0
@@ -151,7 +154,7 @@ exception_valid(e) if {
 # file never silences it elsewhere. Findings without a file (no-rules:<language>) take none.
 excepted(check, f) if {
 	not f.structural
-	some e in object.get(input, "exceptions", [])
+	some e in own_exceptions
 	e.check == check
 	e.id == f.key
 	object.get(e, "path", "") == object.get(f, "path", "")
@@ -200,14 +203,14 @@ decision := {
 		f.level == "fail"
 	]),
 	"exceptions_applied": {e |
-		some e in object.get(input, "exceptions", [])
+		some e in own_exceptions
 		some f in object.get(findings, e.check, set())
 		excepted(e.check, f)
 		e.id == f.key
 		object.get(e, "path", "") == object.get(f, "path", "")
 	},
 	"exceptions_ignored": [{"exception": e, "reason": "invalid, expired, or not exceptable"} |
-		some e in object.get(input, "exceptions", [])
+		some e in own_exceptions
 		not exception_valid(e)
 	],
 }

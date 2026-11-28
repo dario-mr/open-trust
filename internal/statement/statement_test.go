@@ -2,17 +2,17 @@ package statement
 
 import (
 	"encoding/json"
+	"github.com/dario-mr/open-trust/profiles"
 	"testing"
 	"time"
 
 	"github.com/dario-mr/open-trust/internal/policy"
-	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
 )
 
 func build(result string) map[string]any {
 	d := &policy.Decision{Result: result, Checks: []policy.Check{{ID: "sbom", Result: result}, {ID: "subject_binding", Result: "PASSED"}}}
 	d.Profile.ID, d.Profile.Version = "supply-chain-baseline", "1.0.0"
-	st := Build(Params{
+	st := Build(Params{Profile: profiles.SupplyChain,
 		SubjectName: "example.com/x", SubjectDigest: "sha256:abc", Time: time.Unix(0, 0),
 		TrustLevel: "unsigned", Decision: d, Evidence: map[string]string{"sbom": "f00", "subject_binding": ""},
 	})
@@ -30,13 +30,13 @@ func TestVSAShape(t *testing.T) {
 			t.Errorf("VSA predicate missing required field %q", k)
 		}
 	}
-	if got := p["policy"].(map[string]any)["digest"].(map[string]any)["sha256"]; got != scb.PolicyDigest() {
+	if got := p["policy"].(map[string]any)["digest"].(map[string]any)["sha256"]; got != profiles.SupplyChain.Digest() {
 		t.Errorf("policy digest = %v", got)
 	}
 	if got := m["subject"].([]any)[0].(map[string]any)["digest"].(map[string]any)["sha256"]; got != "abc" {
 		t.Errorf("subject digest must drop the sha256: prefix, got %v", got)
 	}
-	if lv := p["verifiedLevels"].([]any); len(lv) != 1 || lv[0] != scb.VSALevel {
+	if lv := p["verifiedLevels"].([]any); len(lv) != 1 || lv[0] != profiles.SupplyChain.VSALevel {
 		t.Errorf("verifiedLevels = %v", lv)
 	}
 	ext := p[ExtensionKey].(map[string]any)

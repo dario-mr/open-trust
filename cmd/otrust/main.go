@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/dario-mr/open-trust/internal/assess"
@@ -19,6 +20,7 @@ import (
 	"github.com/dario-mr/open-trust/internal/statement"
 	"github.com/dario-mr/open-trust/internal/subject"
 	"github.com/dario-mr/open-trust/internal/verify"
+	"github.com/dario-mr/open-trust/profiles"
 )
 
 // Exit codes: 0 PASSED, 1 assessment FAILED, 2 usage or runtime error.
@@ -113,6 +115,7 @@ func cmdPolicy(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Image, "image", "", "registry image (name@sha256:…) whose attached certificate to draft from")
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (offline)")
 	fs.BoolVar(&o.Online, "online", false, "fetch Sigstore's trusted root")
+	profile := fs.String("profile", profiles.SupplyChain.ID, "with --image: which attached certificate ("+profileIDs()+")")
 	var pos []string
 	for len(args) > 0 {
 		if err := fs.Parse(args); err != nil {
@@ -127,22 +130,13 @@ func cmdPolicy(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	case len(pos) == 1:
 		o.Bundle = pos[0]
 	case len(pos) == 0 && subject.IsRef(o.Image):
-		found, err := subject.FindCertificates(ctx, o.Image)
-		if err != nil || len(found) == 0 {
-			fmt.Fprintln(stderr, "otrust: no Open Trust certificate attached to", o.Image, err)
-			return 2
-		}
-		f, err := os.CreateTemp("", "otrust-attached-*.sigstore.json")
+		path, _, cleanup, err := attachedCertificate(ctx, o.Image, *profile)
 		if err != nil {
 			fmt.Fprintln(stderr, "otrust:", err)
 			return 2
 		}
-		defer os.Remove(f.Name())
-		if _, err := f.Write(found[0].Bundle); err != nil || f.Close() != nil {
-			fmt.Fprintln(stderr, "otrust: writing the attached certificate:", err)
-			return 2
-		}
-		o.Bundle = f.Name()
+		defer cleanup()
+		o.Bundle = path
 	default:
 		fmt.Fprintln(stderr, "usage: otrust policy [<certificate.sigstore.json>] [--image <name>@sha256:…] (--online | --trusted-root <file>)")
 		return 2
@@ -154,6 +148,45 @@ func cmdPolicy(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 	fmt.Fprint(stdout, draft)
 	return 0
+}
+
+// attachedCertificate fetches the newest certificate of one profile attached to a registry image
+// into a temp file, with a note saying which one it is.
+func attachedCertificate(ctx context.Context, image, profileID string) (path, note string, cleanup func(), err error) {
+	if profiles.ByID(profileID) == nil {
+		return "", "", nil, fmt.Errorf("unknown profile %q (%s)", profileID, profileIDs())
+	}
+	all, err := subject.FindCertificates(ctx, image)
+	if err != nil {
+		return "", "", nil, err
+	}
+	var found []subject.Attached
+	for _, a := range all {
+		if _, ann, err := certificateSubject(a.Bundle); err == nil && strings.HasPrefix(ann["dev.open-trust.profile"], profileID+"@") {
+			found = append(found, a)
+		}
+	}
+	if len(found) == 0 {
+		return "", "", nil, fmt.Errorf("no %s certificate is attached to %s: ask the vendor for the certificate file, or to assess with --attach", profileID, image)
+	}
+	f, err := os.CreateTemp("", "otrust-attached-*.sigstore.json")
+	if err != nil {
+		return "", "", nil, err
+	}
+	cleanup = func() { os.Remove(f.Name()) }
+	if _, err := f.Write(found[0].Bundle); err != nil || f.Close() != nil {
+		cleanup()
+		return "", "", nil, fmt.Errorf("writing the attached certificate: %v", err)
+	}
+	return f.Name(), fmt.Sprintf("%s certificate found attached to the image: %s, created %s (newest of %d)", profileID, found[0].Digest, found[0].Created, len(found)), cleanup, nil
+}
+
+func profileIDs() string {
+	var ids []string
+	for _, p := range profiles.All {
+		ids = append(ids, p.ID)
+	}
+	return strings.Join(ids, ", ")
 }
 
 // cmdAttach stores an existing certificate on its image in the registry (OCI referrer). It adds no
@@ -294,44 +327,47 @@ func cmdAssess(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		return 2
 	}
 	printSummary(stdout, res)
-	if res.Decision.Result != "PASSED" {
+	if slices.ContainsFunc(res.Certificates, func(c *assess.Certificate) bool { return c.Decision.Result != "PASSED" }) {
 		return 1
 	}
 	return 0
 }
 
 func printSummary(w io.Writer, r *assess.Result) {
-	d := r.Decision
 	mark := map[string]string{"PASSED": "✔", "WARN": "⚠", "FAILED": "✘"}
 	fmt.Fprintf(w, "Subject   %s\n", r.Subject.Digest)
 	fmt.Fprintf(w, "Source    %s @ %s (%s)\n", orDash(r.CI.Repo), r.CI.Revision, r.CI.Provider)
-	fmt.Fprintf(w, "Profile   %s %s\n\n", d.Profile.ID, d.Profile.Version)
-	for _, c := range d.Checks {
-		fmt.Fprintf(w, "%s %-16s %s\n", mark[c.Result], c.ID, c.Result)
-		for _, f := range c.Findings {
-			fmt.Fprintf(w, "    - %s\n", f)
+	for _, c := range r.Certificates {
+		d := c.Decision
+		fmt.Fprintf(w, "\nProfile   %s %s\n", d.Profile.ID, d.Profile.Version)
+		for _, ck := range d.Checks {
+			fmt.Fprintf(w, "%s %-17s %s\n", mark[ck.Result], ck.ID, ck.Result)
+			for _, f := range ck.Findings {
+				fmt.Fprintf(w, "    - %s\n", f)
+			}
+		}
+		if n := len(d.ExceptionsApplied); n > 0 {
+			fmt.Fprintf(w, "Exceptions applied: %d\n", n)
+			for _, e := range d.ExceptionsApplied {
+				fmt.Fprintf(w, "    - %s %s%s (expires %s): %s\n", e.Check, e.ID, inFile(e.Path), e.Expires, e.Reason)
+			}
+		}
+		if n := len(d.ExceptionsIgnored); n > 0 {
+			fmt.Fprintf(w, "Exceptions ignored (invalid or expired): %d\n", n)
+		}
+		fmt.Fprintf(w, "Result    %s\n", d.Result)
+		if c.Signed {
+			fmt.Fprintf(w, "Output    %s\n", filepath.Join(r.OutDir, c.Profile.Bundle))
+			if c.Attached != "" {
+				fmt.Fprintf(w, "Attached  to the image's registry as %s\n", c.Attached)
+			}
+		} else {
+			fmt.Fprintf(w, "Output    %s (unsigned; for local testing only)\n", filepath.Join(r.OutDir, c.Profile.Statement))
 		}
 	}
-	if n := len(d.ExceptionsApplied); n > 0 {
-		fmt.Fprintf(w, "\nExceptions applied: %d\n", n)
-		for _, e := range d.ExceptionsApplied {
-			fmt.Fprintf(w, "    - %s %s%s (expires %s): %s\n", e.Check, e.ID, inFile(e.Path), e.Expires, e.Reason)
-		}
-	}
-	if n := len(d.ExceptionsIgnored); n > 0 {
-		fmt.Fprintf(w, "Exceptions ignored (invalid or expired): %d\n", n)
-	}
-	fmt.Fprintf(w, "\nResult    %s\n", d.Result)
-	if r.Signed {
-		ext := r.Statement.Predicate[statement.ExtensionKey].(statement.Extension)
-		fmt.Fprintf(w, "Trust     %s\n", ext.TrustLevel)
-		fmt.Fprintf(w, "Output    %s  (give this and the image to customers)\n", filepath.Join(r.OutDir, assess.BundleFile))
-		if r.Attached != "" {
-			fmt.Fprintf(w, "Attached  to the image's registry as %s: buyers verify with just --image and the same reference\n", r.Attached)
-		}
-	} else {
-		fmt.Fprintln(w, "Trust     unsigned (no signature; for local testing only)")
-		fmt.Fprintf(w, "Output    %s\n", filepath.Join(r.OutDir, "statement.json"))
+	if len(r.Certificates) > 0 && r.Certificates[0].Signed {
+		ext := r.Certificates[0].Statement.Predicate[statement.ExtensionKey].(statement.Extension)
+		fmt.Fprintf(w, "\nTrust     %s  (give the certificates and the image to customers)\n", ext.TrustLevel)
 	}
 	fmt.Fprintf(w, "Evidence  %s  (stays with you; share only if you choose)\n", r.OutDir)
 }
@@ -345,6 +381,7 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs.StringVar(&o.Evidence, "evidence", "", "evidence directory shared by the vendor: re-checks digests and re-runs the policy")
 	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json for keyless/CI-signed certificates, to verify offline (without it, --online fetches it)")
 	fs.StringVar(&o.Revocations, "revocations", "", "revocations.json: your own list, or a downloaded signed Open Trust list")
+	profile := fs.String("profile", profiles.SupplyChain.ID, "without a certificate file: which certificate attached to --image ("+profileIDs()+")")
 	fs.BoolVar(&o.Online, "online", false, "fetch the signed Open Trust revocation list and, without --trusted-root, Sigstore's trusted root")
 	fs.StringVar(&o.Previous, "previous", "", "an earlier certificate for the same product: lists what changed (checked against the same trust policy)")
 	report := fs.String("report", "", "also write the report as Markdown to this file, to pass on")
@@ -377,27 +414,13 @@ func cmdVerify(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	if len(pos) == 1 {
 		o.Bundle, certName = pos[0], pos[0]
 	} else {
-		found, err := subject.FindCertificates(ctx, o.Image)
+		path, note, cleanup, err := attachedCertificate(ctx, o.Image, *profile)
 		if err != nil {
 			fmt.Fprintln(stderr, "otrust:", err)
 			return 2
 		}
-		if len(found) == 0 {
-			fmt.Fprintf(stderr, "otrust: no Open Trust certificate is attached to %s: ask the vendor for the certificate file, or to assess with --attach\n", o.Image)
-			return 2
-		}
-		f, err := os.CreateTemp("", "otrust-attached-*.sigstore.json")
-		if err != nil {
-			fmt.Fprintln(stderr, "otrust:", err)
-			return 2
-		}
-		defer os.Remove(f.Name())
-		if _, err := f.Write(found[0].Bundle); err != nil || f.Close() != nil {
-			fmt.Fprintln(stderr, "otrust: writing the attached certificate:", err)
-			return 2
-		}
-		o.Bundle, certName = f.Name(), "attached to the image ("+found[0].Digest+")"
-		attachedNote = fmt.Sprintf("certificate found attached to the image: %s, created %s (newest of %d)", found[0].Digest, found[0].Created, len(found))
+		defer cleanup()
+		o.Bundle, certName, attachedNote = path, "attached to the image", note
 	}
 	r, err := verify.Verify(ctx, o)
 	if err != nil {

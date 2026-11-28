@@ -13,7 +13,7 @@ import (
 	"github.com/open-policy-agent/opa/v1/rego"
 	"gopkg.in/yaml.v3"
 
-	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
+	"github.com/dario-mr/open-trust/profiles"
 )
 
 // Context is the policy input minus scanner evidence. It is written to context.json and bound
@@ -115,6 +115,12 @@ func LoadExceptions(path string) ([]Exception, error) {
 	if err := dec.Decode(&es); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
+	for _, e := range es {
+		// a typo'd check would otherwise match no profile and silently except nothing
+		if !profiles.HasCheck(e.Check) {
+			return nil, fmt.Errorf("%s: exception for unknown check %q", path, e.Check)
+		}
+	}
 	if es == nil {
 		es = []Exception{}
 	}
@@ -123,8 +129,8 @@ func LoadExceptions(path string) ([]Exception, error) {
 
 func NowRFC3339() string { return time.Now().UTC().Format(time.RFC3339) }
 
-// Evaluate runs the embedded policy over the input exactly as the verifier will.
-func Evaluate(ctx context.Context, in *Input) (*Decision, error) {
+// Evaluate runs a profile's embedded policy over the input exactly as the verifier will.
+func Evaluate(ctx context.Context, p *profiles.Profile, in *Input) (*Decision, error) {
 	raw, err := json.Marshal(in)
 	if err != nil {
 		return nil, err
@@ -136,8 +142,8 @@ func Evaluate(ctx context.Context, in *Input) (*Decision, error) {
 		return nil, err
 	}
 	rs, err := rego.New(
-		rego.Query(scb.Query),
-		rego.Module("policy.rego", string(scb.Policy)),
+		rego.Query(p.Query),
+		rego.Module("policy.rego", string(p.Policy)),
 		rego.Input(doc),
 		rego.StrictBuiltinErrors(true),
 	).Eval(ctx)

@@ -27,7 +27,7 @@ import (
 	"github.com/dario-mr/open-trust/internal/statement"
 	"github.com/dario-mr/open-trust/internal/subject"
 	"github.com/dario-mr/open-trust/internal/trustlevel"
-	scb "github.com/dario-mr/open-trust/profiles/supply-chain-baseline/v1"
+	"github.com/dario-mr/open-trust/profiles"
 )
 
 type Code string
@@ -136,7 +136,8 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 		return r, err
 	}
 	p := r.Predicate
-	if p.Policy.Digest["sha256"] != scb.PolicyDigest() {
+	prof := profiles.ByDigest(p.Policy.Digest["sha256"])
+	if prof == nil {
 		return r.fail(PolicyUnknown, "policy %s (sha256:%s) is not the profile this verifier knows", p.Policy.URI, p.Policy.Digest["sha256"]), nil
 	}
 
@@ -226,7 +227,7 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 
 	// 6. evidence (optional): digests, then re-evaluate the policy and compare with the claimed results
 	if o.Evidence != "" {
-		code, why, err := checkEvidence(ctx, o.Evidence, r.SubjectDigest, p)
+		code, why, err := checkEvidence(ctx, o.Evidence, r.SubjectDigest, p, prof)
 		if err != nil {
 			return nil, err
 		}
@@ -240,11 +241,15 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	if p.VerificationResult != "PASSED" {
 		return r.fail(AssessmentFailed, "assessment result is %s", p.VerificationResult), nil
 	}
-	if !slices.Contains(p.VerifiedLevels, scb.VSALevel) {
-		return r.fail(Malformed, "PASSED without verified level %s", scb.VSALevel), nil
+	if !slices.Contains(p.VerifiedLevels, prof.VSALevel) {
+		return r.fail(Malformed, "PASSED without verified level %s", prof.VSALevel), nil
 	}
 
 	// 8. re-check (optional): the buyer's own scan of the image, today
+	if o.Recheck && prof != profiles.SupplyChain {
+		// shortcut: the re-check compares vulnerabilities and packages; a quality re-check would need its own comparison
+		return nil, fmt.Errorf("--recheck re-checks %s certificates; this one is %s", profiles.SupplyChain.ID, prof.ID)
+	}
 	if o.Recheck {
 		fresh, err := scanImage(ctx, layoutPath, img, o.LocalScanners)
 		if err != nil {
@@ -272,7 +277,7 @@ func Verify(ctx context.Context, o Options) (*Report, error) {
 	return r, nil
 }
 
-func checkEvidence(ctx context.Context, dir, subjectDigest string, p *Predicate) (Code, string, error) {
+func checkEvidence(ctx context.Context, dir, subjectDigest string, p *Predicate, prof *profiles.Profile) (Code, string, error) {
 	read := func(name, wantHex string) ([]byte, Code, string) {
 		b, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
@@ -294,18 +299,20 @@ func checkEvidence(ctx context.Context, dir, subjectDigest string, p *Predicate)
 	if pc.Subject.Digest != subjectDigest {
 		return EvidenceMismatch, "evidence is for " + pc.Subject.Digest, nil
 	}
-	ev := map[string]json.RawMessage{}
+	ev := map[string]json.RawMessage{} // by file: several checks can read the same evidence
 	for _, c := range p.Ext.Checks {
 		if c.EvidenceDigest["sha256"] == "" {
 			continue
 		}
-		b, code, why := read(statement.EvidenceFiles[c.ID], c.EvidenceDigest["sha256"])
+		f := statement.EvidenceFiles[c.ID]
+		b, code, why := read(f, c.EvidenceDigest["sha256"])
 		if code != OK {
 			return code, why, nil
 		}
-		ev[c.ID] = b
+		ev[f] = b
 	}
-	dec, err := policy.Evaluate(ctx, pc.Input(policy.EvidenceIn{SBOM: ev["sbom"], Vulns: ev["vulns"], Secrets: ev["secrets"], SAST: ev["sast"]}))
+	dec, err := policy.Evaluate(ctx, prof, pc.Input(policy.EvidenceIn{SBOM: ev["sbom.cdx.json"], Vulns: ev["vulns.json"],
+		Secrets: ev["secrets.json"], SAST: ev["sast.json"]}))
 	if err != nil {
 		return "", "", err
 	}

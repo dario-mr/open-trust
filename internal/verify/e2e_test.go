@@ -2,6 +2,7 @@ package verify
 
 import (
 	"context"
+	"github.com/dario-mr/open-trust/profiles"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +36,7 @@ func TestE2EAssessSignVerify(t *testing.T) {
 			OutDir: ev, Revision: "e2e", Signer: s}); err != nil {
 			t.Fatal(err)
 		}
-		r := run(t, Options{Bundle: filepath.Join(ev, assess.BundleFile), Image: img, Evidence: ev,
+		r := run(t, Options{Bundle: filepath.Join(ev, profiles.SupplyChain.Bundle), Image: img, Evidence: ev,
 			TrustPolicy: writeTrust(t, out, "signers:\n  - name: vendor\n    publicKey: vendor.pub\n")})
 		if r.Code != want || !r.EvidenceChecked {
 			t.Errorf("%s: got %s (%s), want %s with evidence re-checked", c, r.Code, r.Reason, want)
