@@ -79,9 +79,9 @@ Pinning the assessor by commit is the strictest choice, but you must update the 
 
 ```yaml
 minTrustLevel: L1+isolated-assessor
-minAgentVersion: 0.1.9   # otrust v0.1.10+; the version the assessor signed into the certificate
+minAgentVersion: 0.1.17  # the version the assessor signed into the certificate
 signers:
-  - name: Acme svc, via any Open Trust assessor release since v0.1.9
+  - name: Acme svc, via any Open Trust assessor release since v0.1.17
     issuer: https://token.actions.githubusercontent.com
     sourceRepo: https://github.com/acme/svc
     sourceRef: refs/heads/main
