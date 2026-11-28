@@ -15,9 +15,9 @@ pipeline {
     environment {
         // the generic script, pinned by commit; the otrust release it runs, pinned by digest
         OTRUST_TEMPLATE = 'https://raw.githubusercontent.com/dario-mr/open-trust/<commit>/ci-templates/generic/otrust-assess.sh'
-        OTRUST_VERSION  = 'v0.1.18'
-        OTRUST_SHA256_LINUX_AMD64 = 'c7196235a3388446ff5c17490562822023d9462e0859baedaedba8ba9c05d968'
-        OTRUST_SHA256_LINUX_ARM64 = '3c71900b546298bbbed2b87e94bfb9405f55f24cf60e0ceabd2958f80e18dc71'
+        OTRUST_VERSION  = 'v0.1.19'
+        OTRUST_SHA256_LINUX_AMD64 = 'b2ccd417f3ae3f58f57fb93e15d6a98757efd053418d65b1ba458c9427137ac7'
+        OTRUST_SHA256_LINUX_ARM64 = '514a7dc5afe373ef4ae4e3d7559ce490e0c75e88cb74bb3f232785519adfbf9a'
         OTRUST_SUBJECT  = 'registry.example.com/acme/svc'
     }
     stages {
