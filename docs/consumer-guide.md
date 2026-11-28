@@ -54,6 +54,14 @@ Attaching adds no trust: the certificate is checked exactly as if you had receiv
 
 The re-check covers only the image checks. Secrets and static analysis need the source, which you don't have.
 
+**Start from a draft.** `otrust policy` writes a trust policy from a certificate you received, after checking its signature. It pins exactly what that signature proves: the CI's identity issuer, the vendor's repository and branch, the exact signing workflow and revision, hosted runners only, and the certificate's trust level and assessor version as minimums. It checks that the draft accepts the certificate, and each line carries a comment. Review it before you use it: whom to trust is your decision, and the draft only says who signed *this* certificate.
+
+```bash
+otrust policy --image ghcr.io/acme/svc@sha256:… --online > trust.yaml     # or: otrust policy certificate.sigstore.json --online
+```
+
+For a key-signed certificate the draft names `vendor.pub`: get the vendor's public key through a channel you trust, not with the certificate.
+
 A sample `trust.yaml` that accepts only the Open Trust assessor at a pinned version, assessing one vendor repository on a GitHub-hosted runner:
 
 ```yaml

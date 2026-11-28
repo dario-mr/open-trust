@@ -9,3 +9,5 @@
 They exercise the keyless path of `otrust verify`: certificate chain, SCT and transparency-log checks, identity matching against a trust policy, and trust-level derivation. Our own keyless signing only exists once CI support lands. The bundle's payload is autogov's VSA, not an Open Trust certificate, so verification ends at `MALFORMED` once the signature and identity checks have passed.
 
 The trusted root has validity windows. If the public-good keys rotate, these tests keep passing, because the bundle's timestamps fall inside the old keys' windows.
+
+- `demo-isolated.sigstore.json`: a real certificate from open-trust-demo's GitHub run (isolated assessor, v0.1.16), for drafting trust policies offline.

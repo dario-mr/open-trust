@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/sigstore/sigstore-go/pkg/bundle"
+	"github.com/sigstore/sigstore-go/pkg/fulcio/certificate"
 	"github.com/sigstore/sigstore-go/pkg/root"
 	sgverify "github.com/sigstore/sigstore-go/pkg/verify"
 	"github.com/sigstore/sigstore/pkg/signature"
@@ -362,21 +363,13 @@ func authenticate(path string, loadRoot func() (*root.TrustedRoot, error), tp *T
 		}
 		r.TrustLevel = trustlevel.L1
 	} else {
-		tr, err := loadRoot()
+		c, invalid, err := signingCertificate(b, loadRoot)
 		if err != nil {
 			return nil, nil, err
 		}
-		v, err := sgverify.NewVerifier(tr, sgverify.WithSignedCertificateTimestamps(1),
-			sgverify.WithTransparencyLog(1), sgverify.WithObserverTimestamps(1))
-		if err != nil {
-			return nil, nil, err
+		if invalid != nil {
+			return r.fail(InvalidSignature, "%v", invalid), nil, nil
 		}
-		// Identity is matched below against the trust policy, with a reason per signer.
-		res, err := v.Verify(b, sgverify.NewPolicy(sgverify.WithoutArtifactUnsafe(), sgverify.WithoutIdentitiesUnsafe()))
-		if err != nil {
-			return r.fail(InvalidSignature, "%v", err), nil, nil
-		}
-		c := res.Signature.Certificate
 		r.SignerIdentity = c.SubjectAlternativeName
 		if sp, err = tp.matchCert(*c); err != nil {
 			return r.fail(UntrustedSigner, "certificate identity not in trust policy (%v)", err), nil, nil
@@ -430,4 +423,24 @@ func trustedRootLoader(o Options) func() (*root.TrustedRoot, error) {
 		}
 		return tr, err
 	}
+}
+
+// signingCertificate verifies a certificate-signed bundle against Sigstore's trusted root (SCT,
+// transparency log, timestamp) and returns its signing certificate; identity is the caller's to
+// judge. invalid is set when the signature does not verify, err when the inputs are unusable.
+func signingCertificate(b *bundle.Bundle, loadRoot func() (*root.TrustedRoot, error)) (c *certificate.Summary, invalid, err error) {
+	tr, err := loadRoot()
+	if err != nil {
+		return nil, nil, err
+	}
+	v, err := sgverify.NewVerifier(tr, sgverify.WithSignedCertificateTimestamps(1),
+		sgverify.WithTransparencyLog(1), sgverify.WithObserverTimestamps(1))
+	if err != nil {
+		return nil, nil, err
+	}
+	res, err := v.Verify(b, sgverify.NewPolicy(sgverify.WithoutArtifactUnsafe(), sgverify.WithoutIdentitiesUnsafe()))
+	if err != nil {
+		return nil, err, nil
+	}
+	return res.Signature.Certificate, nil, nil
 }

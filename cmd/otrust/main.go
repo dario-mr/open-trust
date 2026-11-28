@@ -34,6 +34,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
   otrust keygen --out <prefix>
   otrust pubkey --key <file|kms-uri>
   otrust attach <certificate.sigstore.json> --image <name>@sha256:…
+  otrust policy [<certificate.sigstore.json>] [--image <name>@sha256:…] (--online | --trusted-root <file>)
   otrust assess --image <oci-layout> (--key <file> | --no-sign) [flags]
   otrust verify <certificate.sigstore.json> --image <oci-layout> --trust-policy <trust.yaml> [flags]`)
 		return 2
@@ -49,11 +50,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return cmdPubkey(ctx, args[1:], stdout, stderr)
 	case "attach":
 		return cmdAttach(ctx, args[1:], stdout, stderr)
+	case "policy":
+		return cmdPolicy(ctx, args[1:], stdout, stderr)
 	case "version":
 		fmt.Fprintln(stdout, assess.Version)
 		return 0
 	default:
-		fmt.Fprintf(stderr, "unknown command %q (commands: assess, verify, attach, keygen, pubkey, version)\n", args[0])
+		fmt.Fprintf(stderr, "unknown command %q (commands: assess, verify, policy, attach, keygen, pubkey, version)\n", args[0])
 		return 2
 	}
 }
@@ -99,6 +102,57 @@ func cmdPubkey(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	}
 	fmt.Fprint(stdout, pem)
 	fmt.Fprintf(stderr, "key hint %s\n", s.GetHint())
+	return 0
+}
+
+// cmdPolicy drafts a trust policy from a certificate (a file, or the one attached to --image).
+func cmdPolicy(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("policy", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var o verify.Options
+	fs.StringVar(&o.Image, "image", "", "registry image (name@sha256:…) whose attached certificate to draft from")
+	fs.StringVar(&o.TrustedRoot, "trusted-root", "", "Sigstore trusted_root.json (offline)")
+	fs.BoolVar(&o.Online, "online", false, "fetch Sigstore's trusted root")
+	var pos []string
+	for len(args) > 0 {
+		if err := fs.Parse(args); err != nil {
+			return 2
+		}
+		if fs.NArg() == 0 {
+			break
+		}
+		pos, args = append(pos, fs.Arg(0)), fs.Args()[1:]
+	}
+	switch {
+	case len(pos) == 1:
+		o.Bundle = pos[0]
+	case len(pos) == 0 && subject.IsRef(o.Image):
+		found, err := subject.FindCertificates(ctx, o.Image)
+		if err != nil || len(found) == 0 {
+			fmt.Fprintln(stderr, "otrust: no Open Trust certificate attached to", o.Image, err)
+			return 2
+		}
+		f, err := os.CreateTemp("", "otrust-attached-*.sigstore.json")
+		if err != nil {
+			fmt.Fprintln(stderr, "otrust:", err)
+			return 2
+		}
+		defer os.Remove(f.Name())
+		if _, err := f.Write(found[0].Bundle); err != nil || f.Close() != nil {
+			fmt.Fprintln(stderr, "otrust: writing the attached certificate:", err)
+			return 2
+		}
+		o.Bundle = f.Name()
+	default:
+		fmt.Fprintln(stderr, "usage: otrust policy [<certificate.sigstore.json>] [--image <name>@sha256:…] (--online | --trusted-root <file>)")
+		return 2
+	}
+	draft, err := verify.DraftPolicy(o)
+	if err != nil {
+		fmt.Fprintln(stderr, "otrust:", err)
+		return 2
+	}
+	fmt.Fprint(stdout, draft)
 	return 0
 }
 
